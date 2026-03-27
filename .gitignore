@@ -1,0 +1,30 @@
+# Go
+/sucheme
+/sucheme.exe
+/bin/
+
+# WebAssembly
+/web-ui/sucheme.wasm
+/web-ui/wasm_exec.js
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+/coverage/
+coverage.out
+coverage.html
+
+# Benchmarks output
+/benchmark-results/
+
+# Build
+/dist/
