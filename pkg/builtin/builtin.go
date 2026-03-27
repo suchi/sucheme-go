@@ -502,27 +502,7 @@ func registerList(e *env.Env) {
 		return types.FromList(cp), nil
 	}))
 
-	e.Define("apply", types.NewProcedure("apply", func(args []*types.Value) (*types.Value, error) {
-		if len(args) < 2 {
-			return nil, fmt.Errorf("expected at least 2 arguments")
-		}
-		proc := args[0]
-		if proc.Type != types.TypeProcedure {
-			return nil, fmt.Errorf("expected a procedure")
-		}
-		last := args[len(args)-1]
-		lst, err := last.ToList()
-		if err != nil {
-			return nil, fmt.Errorf("apply: last argument must be a list")
-		}
-		allArgs := make([]*types.Value, 0, len(args)-2+len(lst))
-		allArgs = append(allArgs, args[1:len(args)-1]...)
-		allArgs = append(allArgs, lst...)
-		if proc.ProcVal.IsBuiltin {
-			return proc.ProcVal.Builtin(allArgs)
-		}
-		return nil, fmt.Errorf("apply with lambda requires evaluator")
-	}))
+	// Note: apply is registered by the evaluator to support both builtins and lambdas.
 
 	e.Define("values", types.NewProcedure("values", func(args []*types.Value) (*types.Value, error) {
 		if len(args) == 1 {
@@ -666,6 +646,9 @@ func registerString(e *env.Env) {
 	e.Define("number->string", types.NewProcedure("number->string", func(args []*types.Value) (*types.Value, error) {
 		if len(args) < 1 {
 			return nil, fmt.Errorf("expected 1 argument")
+		}
+		if args[0].Type != types.TypeInteger && args[0].Type != types.TypeFloat {
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
 		}
 		return types.NewString(args[0].String()), nil
 	}))

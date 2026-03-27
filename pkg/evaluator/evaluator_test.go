@@ -11,6 +11,7 @@ import (
 func setupEval() *env.Env {
 	e := env.Global()
 	builtin.RegisterBuiltins(e)
+	RegisterApply(e)
 	return e
 }
 

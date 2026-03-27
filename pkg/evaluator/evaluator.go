@@ -465,7 +465,13 @@ func evalLetrecStar(expr *types.Value, e *env.Env) (*evalResult, error) {
 		return nil, fmt.Errorf("invalid letrec* bindings")
 	}
 	child := env.New(e)
-	for _, b := range bindings {
+	// Parse bindings once and reuse
+	type binding struct {
+		name string
+		init *types.Value
+	}
+	parsed := make([]binding, len(bindings))
+	for i, b := range bindings {
 		pair, err := b.ToList()
 		if err != nil || len(pair) != 2 {
 			return nil, fmt.Errorf("invalid letrec* binding")
@@ -473,15 +479,15 @@ func evalLetrecStar(expr *types.Value, e *env.Env) (*evalResult, error) {
 		if pair[0].Type != types.TypeSymbol {
 			return nil, fmt.Errorf("letrec*: binding name must be a symbol")
 		}
+		parsed[i] = binding{name: pair[0].SymbolVal, init: pair[1]}
 		child.Define(pair[0].SymbolVal, types.Undefined())
 	}
-	for _, b := range bindings {
-		pair, _ := b.ToList()
-		val, err := Eval(pair[1], child)
+	for _, b := range parsed {
+		val, err := Eval(b.init, child)
 		if err != nil {
 			return nil, err
 		}
-		child.Define(pair[0].SymbolVal, val)
+		child.Define(b.name, val)
 	}
 	return evalBodyTCO(args[1:], child)
 }
@@ -803,7 +809,11 @@ func applyProc(proc *types.Value, args []*types.Value) (*evalResult, error) {
 			// (lambda (a b . rest) body)
 			nFixed := len(lam.Params.Fixed)
 			if len(args) < nFixed {
-				return nil, fmt.Errorf("expected at least %d arguments, got %d", nFixed, len(args))
+				name := lam.Name
+				if name == "" {
+					name = "anonymous"
+				}
+				return nil, fmt.Errorf("%s: expected at least %d arguments, got %d", name, nFixed, len(args))
 			}
 			var err error
 			callEnv, err = closureEnv.Extend(lam.Params.Fixed, args[:nFixed])
@@ -850,6 +860,41 @@ func evalBodyTCO(body []*types.Value, e *env.Env) (*evalResult, error) {
 }
 
 // EvalString parses and evaluates Scheme source code.
+// RegisterApply registers the apply procedure in the environment.
+// This must be called after builtin.RegisterBuiltins since apply needs
+// access to the evaluator's applyProc to support both builtins and lambdas.
+func RegisterApply(e *env.Env) {
+	e.Define("apply", types.NewProcedure("apply", func(args []*types.Value) (*types.Value, error) {
+		if len(args) < 2 {
+			return nil, fmt.Errorf("apply: expected at least 2 arguments")
+		}
+		proc := args[0]
+		if proc.Type != types.TypeProcedure {
+			return nil, fmt.Errorf("apply: expected a procedure, got %s", proc.Type)
+		}
+		last := args[len(args)-1]
+		lst, err := last.ToList()
+		if err != nil {
+			return nil, fmt.Errorf("apply: last argument must be a list")
+		}
+		allArgs := make([]*types.Value, 0, len(args)-2+len(lst))
+		allArgs = append(allArgs, args[1:len(args)-1]...)
+		allArgs = append(allArgs, lst...)
+		result, err := applyProc(proc, allArgs)
+		if err != nil {
+			return nil, err
+		}
+		// Trampoline the result
+		for result.thunk != nil {
+			result, err = evalTCO(result.thunk.expr, result.thunk.env)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return result.value, nil
+	}))
+}
+
 func EvalString(input string, e *env.Env) (*types.Value, error) {
 	exprs, err := parser.ParseAllString(input)
 	if err != nil {
