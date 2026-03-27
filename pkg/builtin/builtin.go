@@ -3,6 +3,8 @@ package builtin
 
 import (
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 
 	"github.com/suchi/sucheme-go/pkg/env"
@@ -205,7 +207,11 @@ func registerComparison(e *env.Env) {
 			return nil, fmt.Errorf("expected at least 2 arguments")
 		}
 		for i := 1; i < len(args); i++ {
-			if !numEq(args[i-1], args[i]) {
+			eq, err := numEq(args[i-1], args[i])
+			if err != nil {
+				return nil, err
+			}
+			if !eq {
 				return types.False, nil
 			}
 		}
@@ -217,7 +223,11 @@ func registerComparison(e *env.Env) {
 			return nil, fmt.Errorf("expected at least 2 arguments")
 		}
 		for i := 1; i < len(args); i++ {
-			if !numLt(args[i-1], args[i]) {
+			lt, err := numLt(args[i-1], args[i])
+			if err != nil {
+				return nil, err
+			}
+			if !lt {
 				return types.False, nil
 			}
 		}
@@ -229,7 +239,11 @@ func registerComparison(e *env.Env) {
 			return nil, fmt.Errorf("expected at least 2 arguments")
 		}
 		for i := 1; i < len(args); i++ {
-			if !numLt(args[i], args[i-1]) {
+			lt, err := numLt(args[i], args[i-1])
+			if err != nil {
+				return nil, err
+			}
+			if !lt {
 				return types.False, nil
 			}
 		}
@@ -241,7 +255,11 @@ func registerComparison(e *env.Env) {
 			return nil, fmt.Errorf("expected at least 2 arguments")
 		}
 		for i := 1; i < len(args); i++ {
-			if numLt(args[i], args[i-1]) {
+			lt, err := numLt(args[i], args[i-1])
+			if err != nil {
+				return nil, err
+			}
+			if lt {
 				return types.False, nil
 			}
 		}
@@ -253,7 +271,11 @@ func registerComparison(e *env.Env) {
 			return nil, fmt.Errorf("expected at least 2 arguments")
 		}
 		for i := 1; i < len(args); i++ {
-			if numLt(args[i-1], args[i]) {
+			lt, err := numLt(args[i-1], args[i])
+			if err != nil {
+				return nil, err
+			}
+			if lt {
 				return types.False, nil
 			}
 		}
@@ -282,27 +304,39 @@ func registerComparison(e *env.Env) {
 	}))
 }
 
-func numEq(a, b *types.Value) bool {
-	af := toFloat(a)
-	bf := toFloat(b)
-	return af == bf
-}
-
-func numLt(a, b *types.Value) bool {
-	af := toFloat(a)
-	bf := toFloat(b)
-	return af < bf
-}
-
-func toFloat(v *types.Value) float64 {
+func toFloat(v *types.Value) (float64, error) {
 	switch v.Type {
 	case types.TypeInteger:
-		return float64(v.IntVal)
+		return float64(v.IntVal), nil
 	case types.TypeFloat:
-		return v.FloatVal
+		return v.FloatVal, nil
 	default:
-		return 0
+		return 0, fmt.Errorf("expected number, got %s", v.Type)
 	}
+}
+
+func numEq(a, b *types.Value) (bool, error) {
+	af, err := toFloat(a)
+	if err != nil {
+		return false, err
+	}
+	bf, err := toFloat(b)
+	if err != nil {
+		return false, err
+	}
+	return af == bf, nil
+}
+
+func numLt(a, b *types.Value) (bool, error) {
+	af, err := toFloat(a)
+	if err != nil {
+		return false, err
+	}
+	bf, err := toFloat(b)
+	if err != nil {
+		return false, err
+	}
+	return af < bf, nil
 }
 
 func registerList(e *env.Env) {
@@ -611,16 +645,19 @@ func registerString(e *env.Env) {
 			return nil, fmt.Errorf("expected a string")
 		}
 		s := strings.TrimSpace(args[0].StrVal)
-		// Try float first if contains '.', 'e', 'E'
+		if s == "" {
+			return types.False, nil
+		}
+		// Try float if contains '.', 'e', 'E'
 		if strings.ContainsAny(s, ".eE") {
-			var f float64
-			if _, err := fmt.Sscanf(s, "%g", &f); err == nil {
+			f, err := strconv.ParseFloat(s, 64)
+			if err == nil {
 				return types.NewFloat(f), nil
 			}
 		}
-		// Try integer
-		var n int64
-		if _, err := fmt.Sscanf(s, "%d", &n); err == nil {
+		// Try integer (strconv validates the entire string)
+		n, err := strconv.ParseInt(s, 10, 64)
+		if err == nil {
 			return types.NewInteger(n), nil
 		}
 		return types.False, nil
@@ -710,11 +747,18 @@ func registerString(e *env.Env) {
 			return nil, fmt.Errorf("expected integer length")
 		}
 		n := args[0].IntVal
+		if n < 0 {
+			return nil, fmt.Errorf("string length must be non-negative")
+		}
+		if n > int64(math.MaxInt32) {
+			return nil, fmt.Errorf("string length too large")
+		}
+		length := int(n)
 		ch := ' '
 		if len(args) >= 2 && args[1].Type == types.TypeCharacter {
 			ch = args[1].CharVal
 		}
-		runes := make([]rune, n)
+		runes := make([]rune, length)
 		for i := range runes {
 			runes[i] = ch
 		}
@@ -841,11 +885,17 @@ func registerVector(e *env.Env) {
 			return nil, fmt.Errorf("expected integer size")
 		}
 		n := args[0].IntVal
+		if n < 0 {
+			return nil, fmt.Errorf("vector size must be non-negative")
+		}
+		if n > int64(math.MaxInt32) {
+			return nil, fmt.Errorf("vector size too large")
+		}
 		fill := types.NewInteger(0)
 		if len(args) >= 2 {
 			fill = args[1]
 		}
-		vec := make([]*types.Value, n)
+		vec := make([]*types.Value, int(n))
 		for i := range vec {
 			vec[i] = fill
 		}
@@ -929,10 +979,24 @@ func registerBytevector(e *env.Env) {
 		if len(args) < 1 || args[0].Type != types.TypeInteger {
 			return nil, fmt.Errorf("expected integer size")
 		}
-		n := args[0].IntVal
+		n64 := args[0].IntVal
+		if n64 < 0 {
+			return nil, fmt.Errorf("bytevector size must be non-negative")
+		}
+		if n64 > int64(math.MaxInt32) {
+			return nil, fmt.Errorf("bytevector size too large")
+		}
+		n := int(n64)
 		fill := byte(0)
-		if len(args) >= 2 && args[1].Type == types.TypeInteger {
-			fill = byte(args[1].IntVal)
+		if len(args) >= 2 {
+			if args[1].Type != types.TypeInteger {
+				return nil, fmt.Errorf("expected integer fill value")
+			}
+			fillVal := args[1].IntVal
+			if fillVal < 0 || fillVal > 255 {
+				return nil, fmt.Errorf("fill value out of range: %d (expected 0..255)", fillVal)
+			}
+			fill = byte(fillVal)
 		}
 		bv := make([]byte, n)
 		for i := range bv {
@@ -967,7 +1031,11 @@ func registerBytevector(e *env.Env) {
 		if idx < 0 || idx >= int64(len(args[0].ByteVec)) {
 			return nil, fmt.Errorf("bytevector index out of range: %d", idx)
 		}
-		args[0].ByteVec[idx] = byte(args[2].IntVal)
+		val := args[2].IntVal
+		if val < 0 || val > 255 {
+			return nil, fmt.Errorf("byte value out of range: %d (expected 0..255)", val)
+		}
+		args[0].ByteVec[idx] = byte(val)
 		return types.Void(), nil
 	}))
 

@@ -224,9 +224,17 @@ func TestEqPredicate(t *testing.T) {
 	if !r.BoolVal {
 		t.Error("expected (eq? 1 1) = #t")
 	}
+	// eq? on different string objects is #f (pointer equality)
 	r = call(t, e, "eq?", types.NewString("a"), types.NewString("a"))
-	// Different string objects, eq? is pointer equality for strings
-	// but in our impl, strings are compared by value in Eq for simplicity
+	if r.BoolVal {
+		t.Error("expected (eq? \"a\" \"a\") = #f for distinct string objects")
+	}
+	// eq? on same string object is #t
+	s := types.NewString("hello")
+	r = call(t, e, "eq?", s, s)
+	if !r.BoolVal {
+		t.Error("expected (eq? s s) = #t for same object")
+	}
 }
 
 func TestEqualPredicate(t *testing.T) {

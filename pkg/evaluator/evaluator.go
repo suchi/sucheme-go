@@ -149,12 +149,18 @@ func evalCond(expr *types.Value, e *env.Env) (*evalResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid cond syntax")
 	}
-	for _, clause := range clauses {
+	for i, clause := range clauses {
 		parts, err := clause.ToList()
 		if err != nil || len(parts) == 0 {
 			return nil, fmt.Errorf("invalid cond clause")
 		}
 		if parts[0].Type == types.TypeSymbol && parts[0].SymbolVal == "else" {
+			if i != len(clauses)-1 {
+				return nil, fmt.Errorf("else clause must be last in cond")
+			}
+			if len(parts) < 2 {
+				return nil, fmt.Errorf("else clause in cond must have at least one expression")
+			}
 			return evalBodyTCO(parts[1:], e)
 		}
 		test, err := Eval(parts[0], e)
@@ -638,14 +644,34 @@ func evalQuasiquote(expr *types.Value, e *env.Env) (*evalResult, error) {
 }
 
 func expandQuasiquote(expr *types.Value, e *env.Env) (*types.Value, error) {
+	return expandQQ(expr, e, 1)
+}
+
+func expandQQ(expr *types.Value, e *env.Env, depth int) (*types.Value, error) {
 	if expr.Type == types.TypePair {
 		car := expr.PairVal.Car
 		if car.Type == types.TypeSymbol && car.SymbolVal == "unquote" {
-			args, err := expr.PairVal.Cdr.ToList()
-			if err != nil || len(args) != 1 {
-				return nil, fmt.Errorf("unquote requires exactly one argument")
+			if depth == 1 {
+				args, err := expr.PairVal.Cdr.ToList()
+				if err != nil || len(args) != 1 {
+					return nil, fmt.Errorf("unquote requires exactly one argument")
+				}
+				return Eval(args[0], e)
 			}
-			return Eval(args[0], e)
+			// Nested unquote: decrease depth and recurse
+			inner, err := expandQQ(expr.PairVal.Cdr, e, depth-1)
+			if err != nil {
+				return nil, err
+			}
+			return types.Cons(car, inner), nil
+		}
+		if car.Type == types.TypeSymbol && car.SymbolVal == "quasiquote" {
+			// Nested quasiquote: increase depth
+			inner, err := expandQQ(expr.PairVal.Cdr, e, depth+1)
+			if err != nil {
+				return nil, err
+			}
+			return types.Cons(car, inner), nil
 		}
 		// Handle unquote-splicing in list context
 		var elems []*types.Value
@@ -653,21 +679,29 @@ func expandQuasiquote(expr *types.Value, e *env.Env) (*types.Value, error) {
 		for cur.Type == types.TypePair {
 			item := cur.PairVal.Car
 			if item.Type == types.TypePair && item.PairVal.Car.Type == types.TypeSymbol && item.PairVal.Car.SymbolVal == "unquote-splicing" {
-				spliceArgs, err := item.PairVal.Cdr.ToList()
-				if err != nil || len(spliceArgs) != 1 {
-					return nil, fmt.Errorf("unquote-splicing requires exactly one argument")
+				if depth == 1 {
+					spliceArgs, err := item.PairVal.Cdr.ToList()
+					if err != nil || len(spliceArgs) != 1 {
+						return nil, fmt.Errorf("unquote-splicing requires exactly one argument")
+					}
+					val, err := Eval(spliceArgs[0], e)
+					if err != nil {
+						return nil, err
+					}
+					spliced, err := val.ToList()
+					if err != nil {
+						return nil, fmt.Errorf("unquote-splicing: expected list")
+					}
+					elems = append(elems, spliced...)
+				} else {
+					expanded, err := expandQQ(item, e, depth-1)
+					if err != nil {
+						return nil, err
+					}
+					elems = append(elems, expanded)
 				}
-				val, err := Eval(spliceArgs[0], e)
-				if err != nil {
-					return nil, err
-				}
-				spliced, err := val.ToList()
-				if err != nil {
-					return nil, fmt.Errorf("unquote-splicing: expected list")
-				}
-				elems = append(elems, spliced...)
 			} else {
-				expanded, err := expandQuasiquote(item, e)
+				expanded, err := expandQQ(item, e, depth)
 				if err != nil {
 					return nil, err
 				}
@@ -678,7 +712,7 @@ func expandQuasiquote(expr *types.Value, e *env.Env) (*types.Value, error) {
 		tail := types.Nil()
 		if cur.Type != types.TypeNil {
 			var err error
-			tail, err = expandQuasiquote(cur, e)
+			tail, err = expandQQ(cur, e, depth)
 			if err != nil {
 				return nil, err
 			}
@@ -690,13 +724,29 @@ func expandQuasiquote(expr *types.Value, e *env.Env) (*types.Value, error) {
 		return result, nil
 	}
 	if expr.Type == types.TypeVector {
-		elems := make([]*types.Value, len(expr.VecVal))
-		for i, el := range expr.VecVal {
-			expanded, err := expandQuasiquote(el, e)
-			if err != nil {
-				return nil, err
+		var elems []*types.Value
+		for _, el := range expr.VecVal {
+			if el.Type == types.TypePair && el.PairVal.Car.Type == types.TypeSymbol && el.PairVal.Car.SymbolVal == "unquote-splicing" && depth == 1 {
+				spliceArgs, err := el.PairVal.Cdr.ToList()
+				if err != nil || len(spliceArgs) != 1 {
+					return nil, fmt.Errorf("unquote-splicing requires exactly one argument")
+				}
+				val, err := Eval(spliceArgs[0], e)
+				if err != nil {
+					return nil, err
+				}
+				spliced, err := val.ToList()
+				if err != nil {
+					return nil, fmt.Errorf("unquote-splicing in vector: expected list")
+				}
+				elems = append(elems, spliced...)
+			} else {
+				expanded, err := expandQQ(el, e, depth)
+				if err != nil {
+					return nil, err
+				}
+				elems = append(elems, expanded)
 			}
-			elems[i] = expanded
 		}
 		return types.NewVector(elems), nil
 	}
