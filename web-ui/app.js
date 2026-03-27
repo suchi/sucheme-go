@@ -56,7 +56,7 @@
                     if (res.output) {
                         // Trim trailing newline to avoid double newline with appendOutput
                         var out = res.output.replace(/\n$/, "");
-                        if (out) {
+                        if (out || res.output === "\n") {
                             appendOutput(out, "output");
                         }
                     }
