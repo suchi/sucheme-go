@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/suchi/sucheme-go/actions/workflows/ci.yml/badge.svg)](https://github.com/suchi/sucheme-go/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/suchi/sucheme-go/branch/main/graph/badge.svg)](https://codecov.io/gh/suchi/sucheme-go)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![NOLICENSE](https://img.shields.io/badge/License-NOLICENSE-red.svg)]()
 
 ## 概要
 
@@ -174,18 +174,22 @@ sucheme-go/
 
 ## R7RS 対応状況
 
+> **注意**: 「対応完了」は関連テストが境界例・特殊例を含めてすべてパスした場合のみ付与されます。
+
 | カテゴリ | 項目 | 状況 |
 |---------|------|------|
-| 基本構文 | `define`, `lambda`, `if`, `cond`, `let` 等 | 対応済み |
-| クォート | `quote`, `quasiquote`, `unquote` | 対応済み |
-| マクロ | `syntax-rules`, `define-syntax` | 対応済み |
-| 末尾呼び出し | 適切な末尾呼び出し最適化 | 対応済み |
-| 継続 | `call/cc`, `dynamic-wind` | 対応済み |
-| 例外処理 | `guard`, `raise`, `with-exception-handler` | 対応済み |
-| 多値 | `values`, `call-with-values` | 対応済み |
-| ポート/IO | `open-input-file`, `read`, `write` 等 | 対応済み |
-| ライブラリ | `define-library`, `import`, `export` | 対応済み |
-| データ型 | boolean, char, string, vector, bytevector | 対応済み |
+| 基本構文 | `define`, `lambda`, `if`, `cond`, `let` 等 | 未対応 |
+| クォート | `quote`, `quasiquote`, `unquote` | 未対応 |
+| マクロ | `syntax-rules`, `define-syntax` | 未対応 |
+| 末尾呼び出し | 適切な末尾呼び出し最適化 | 未対応 |
+| 継続 | `call/cc`, `dynamic-wind` | 未対応 |
+| 例外処理 | `guard`, `raise`, `with-exception-handler` | 未対応 |
+| 多値 | `values`, `call-with-values` | 未対応 |
+| ポート/IO | `open-input-file`, `read`, `write` 等 | 未対応 |
+| ライブラリ | `define-library`, `import`, `export` | 未対応 |
+| データ型 | boolean, char, string, vector, bytevector | 部分対応 |
+| レキサー | トークン化 | 対応完了 |
+| パーサー | S式解析 | 対応完了 |
 
 詳細な対応状況は [`docs/`](docs/) ディレクトリを参照してください。
 
@@ -276,4 +280,4 @@ sucheme-go/
 
 ## ライセンス
 
-このプロジェクトは [MIT License](LICENSE) の下で公開されています。
+NOLICENSE — このプロジェクトにはライセンスが設定されていません。
