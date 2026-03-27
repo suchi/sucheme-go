@@ -4,8 +4,8 @@
 package main
 
 import (
-	"fmt"
 	"strings"
+	"sync"
 	"syscall/js"
 
 	"github.com/suchi/sucheme-go/pkg/builtin"
@@ -14,7 +14,13 @@ import (
 	"github.com/suchi/sucheme-go/pkg/types"
 )
 
-var globalEnv *env.Env
+var (
+	globalEnv *env.Env
+	// outputBuf is the current output capture target.
+	// I/O procedures always write to the current outputBuf.
+	outputBuf *strings.Builder
+	outputMu  sync.Mutex
+)
 
 func init() {
 	globalEnv = env.Global()
@@ -40,33 +46,24 @@ func evalJS(this js.Value, args []js.Value) interface{} {
 	}
 
 	input := args[0].String()
-	var output strings.Builder
 
-	// Override display/write to capture output
-	globalEnv.Define("display", types.NewProcedure("display", func(args []*types.Value) (*types.Value, error) {
-		if len(args) >= 1 {
-			output.WriteString(args[0].Display())
-		}
-		return types.Void(), nil
-	}))
-
-	globalEnv.Define("write", types.NewProcedure("write", func(args []*types.Value) (*types.Value, error) {
-		if len(args) >= 1 {
-			output.WriteString(args[0].String())
-		}
-		return types.Void(), nil
-	}))
-
-	globalEnv.Define("newline", types.NewProcedure("newline", func(args []*types.Value) (*types.Value, error) {
-		output.WriteString("\n")
-		return types.Void(), nil
-	}))
+	// Swap in a fresh output buffer for this evaluation
+	outputMu.Lock()
+	var buf strings.Builder
+	outputBuf = &buf
+	outputMu.Unlock()
 
 	result, err := evaluator.EvalString(input, globalEnv)
+
+	outputMu.Lock()
+	captured := outputBuf.String()
+	outputBuf = nil
+	outputMu.Unlock()
+
 	if err != nil {
 		return map[string]interface{}{
 			"error":  err.Error(),
-			"output": output.String(),
+			"output": captured,
 		}
 	}
 
@@ -77,7 +74,7 @@ func evalJS(this js.Value, args []js.Value) interface{} {
 
 	return map[string]interface{}{
 		"result": resultStr,
-		"output": output.String(),
+		"output": captured,
 		"error":  "",
 	}
 }
@@ -90,23 +87,37 @@ func resetJS(this js.Value, args []js.Value) interface{} {
 	return nil
 }
 
+// registerWASMIO registers I/O procedures that write to the current outputBuf.
+// These are defined once and always reference the current outputBuf pointer.
 func registerWASMIO(e *env.Env) {
 	e.Define("display", types.NewProcedure("display", func(args []*types.Value) (*types.Value, error) {
 		if len(args) >= 1 {
-			fmt.Print(args[0].Display())
+			outputMu.Lock()
+			if outputBuf != nil {
+				outputBuf.WriteString(args[0].Display())
+			}
+			outputMu.Unlock()
 		}
 		return types.Void(), nil
 	}))
 
 	e.Define("write", types.NewProcedure("write", func(args []*types.Value) (*types.Value, error) {
 		if len(args) >= 1 {
-			fmt.Print(args[0].String())
+			outputMu.Lock()
+			if outputBuf != nil {
+				outputBuf.WriteString(args[0].String())
+			}
+			outputMu.Unlock()
 		}
 		return types.Void(), nil
 	}))
 
 	e.Define("newline", types.NewProcedure("newline", func(args []*types.Value) (*types.Value, error) {
-		fmt.Println()
+		outputMu.Lock()
+		if outputBuf != nil {
+			outputBuf.WriteString("\n")
+		}
+		outputMu.Unlock()
 		return types.Void(), nil
 	}))
 }

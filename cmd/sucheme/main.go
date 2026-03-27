@@ -174,14 +174,31 @@ func runREPL(e *env.Env, quiet bool) {
 	}
 }
 
-// isBalanced checks if parentheses/brackets are balanced, respecting strings and comments.
+// isBalanced checks if parentheses/brackets are balanced,
+// respecting strings, line comments, and #|...|# block comments.
 func isBalanced(input string) bool {
+	runes := []rune(input)
 	depth := 0
 	inString := false
 	escaped := false
 	inLineComment := false
+	blockCommentDepth := 0
 
-	for _, ch := range input {
+	for i := 0; i < len(runes); i++ {
+		ch := runes[i]
+
+		// Block comment handling (nestable)
+		if blockCommentDepth > 0 {
+			if ch == '|' && i+1 < len(runes) && runes[i+1] == '#' {
+				blockCommentDepth--
+				i++ // skip '#'
+			} else if ch == '#' && i+1 < len(runes) && runes[i+1] == '|' {
+				blockCommentDepth++
+				i++ // skip '|'
+			}
+			continue
+		}
+
 		if inLineComment {
 			if ch == '\n' {
 				inLineComment = false
@@ -200,6 +217,21 @@ func isBalanced(input string) bool {
 			}
 			continue
 		}
+
+		// Check for block comment start
+		if ch == '#' && i+1 < len(runes) && runes[i+1] == '|' {
+			blockCommentDepth++
+			i++ // skip '|'
+			continue
+		}
+
+		// Check for datum comment (#;) - just skip the '#;' prefix,
+		// the datum itself will be counted normally for balance purposes
+		if ch == '#' && i+1 < len(runes) && runes[i+1] == ';' {
+			i++ // skip ';'
+			continue
+		}
+
 		switch ch {
 		case ';':
 			inLineComment = true
@@ -212,7 +244,7 @@ func isBalanced(input string) bool {
 		}
 	}
 
-	return depth <= 0 && !inString
+	return depth <= 0 && !inString && blockCommentDepth == 0
 }
 
 // registerDisplayWrite registers display and write with actual I/O.

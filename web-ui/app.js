@@ -50,9 +50,20 @@
         // Call the WASM evaluate function if available
         if (typeof window.suchemeEval === "function") {
             try {
-                var result = window.suchemeEval(expr);
-                if (result !== undefined && result !== null && result !== "") {
-                    appendOutput(result, "result");
+                var res = window.suchemeEval(expr);
+                if (res && typeof res === "object") {
+                    // Structured response: { result, output, error }
+                    if (res.output) {
+                        appendOutput(res.output, "output");
+                    }
+                    if (res.error) {
+                        appendOutput("Error: " + res.error, "error");
+                    } else if (res.result) {
+                        appendOutput(res.result, "result");
+                    }
+                } else if (res !== undefined && res !== null && res !== "") {
+                    // Legacy string response
+                    appendOutput(String(res), "result");
                 }
             } catch (err) {
                 appendOutput("Error: " + err.message, "error");
