@@ -41,6 +41,7 @@ func main() {
 func evalJS(this js.Value, args []js.Value) interface{} {
 	if len(args) < 1 {
 		return map[string]interface{}{
+			"result": "",
 			"error":  "no input provided",
 			"output": "",
 		}
@@ -63,6 +64,7 @@ func evalJS(this js.Value, args []js.Value) interface{} {
 
 	if err != nil {
 		return map[string]interface{}{
+			"result": "",
 			"error":  err.Error(),
 			"output": captured,
 		}

@@ -233,6 +233,21 @@ func isComplete(input string) bool {
 			continue
 		}
 
+		// Check for character literal (#\x) - skip the character
+		// to avoid counting #\( or #\) as parentheses
+		if ch == '#' && i+1 < len(runes) && runes[i+1] == '\\' {
+			i += 2 // skip '#' and '\'
+			// Skip the character name (e.g., space, newline, x41)
+			for i < len(runes) && runes[i] != ' ' && runes[i] != '\t' &&
+				runes[i] != '\n' && runes[i] != '(' && runes[i] != ')' &&
+				runes[i] != '[' && runes[i] != ']' && runes[i] != '"' &&
+				runes[i] != ';' {
+				i++
+			}
+			i-- // will be incremented by for loop
+			continue
+		}
+
 		switch ch {
 		case ';':
 			inLineComment = true

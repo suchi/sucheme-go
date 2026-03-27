@@ -54,7 +54,11 @@
                 if (res && typeof res === "object") {
                     // Structured response: { result, output, error }
                     if (res.output) {
-                        appendOutput(res.output, "output");
+                        // Trim trailing newline to avoid double newline with appendOutput
+                        var out = res.output.replace(/\n$/, "");
+                        if (out) {
+                            appendOutput(out, "output");
+                        }
                     }
                     if (res.error) {
                         appendOutput("Error: " + res.error, "error");
