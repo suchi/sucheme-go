@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sucheme - R7RS Scheme Interpreter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Sucheme</h1>
+        <p class="subtitle">R7RS Scheme Interpreter</p>
+        <nav>
+            <a href="https://github.com/suchi/sucheme-go" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </nav>
+    </header>
+
+    <main>
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Loading WASM module...</p>
+        </div>
+
+        <div id="repl" class="hidden">
+            <div id="output" aria-label="REPL output"></div>
+            <div id="input-area">
+                <label for="input" class="sr-only">Scheme expression</label>
+                <textarea id="input" placeholder="Type a Scheme expression..." rows="3" spellcheck="false"></textarea>
+                <div id="input-controls">
+                    <span class="hint">Ctrl+Enter to evaluate</span>
+                    <button id="eval-btn" type="button">Evaluate</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="error-message" class="hidden">
+            <p>Failed to load WASM module. Make sure the interpreter has been compiled to WebAssembly.</p>
+            <p>You can build it with: <code>make wasm</code></p>
+        </div>
+    </main>
+
+    <footer>
+        <p>Sucheme - A Scheme interpreter written in Go</p>
+    </footer>
+
+    <script src="wasm_exec.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
