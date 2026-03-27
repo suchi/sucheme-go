@@ -62,7 +62,12 @@ func (e *Env) Extend(params []string, args []*types.Value) (*Env, error) {
 		return nil, fmt.Errorf("expected %d arguments, got %d", len(params), len(args))
 	}
 	child := New(e)
+	seen := make(map[string]bool, len(params))
 	for i, p := range params {
+		if seen[p] {
+			return nil, fmt.Errorf("duplicate parameter: %s", p)
+		}
+		seen[p] = true
 		child.bindings[p] = args[i]
 	}
 	return child, nil

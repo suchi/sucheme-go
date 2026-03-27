@@ -443,6 +443,9 @@ func registerList(e *env.Env) {
 			return nil, fmt.Errorf("expected integer index")
 		}
 		idx := args[1].IntVal
+		if idx < 0 {
+			return nil, fmt.Errorf("list-ref: index must be non-negative, got %d", idx)
+		}
 		cur := args[0]
 		for i := int64(0); i < idx; i++ {
 			if cur.Type != types.TypePair {
@@ -462,6 +465,9 @@ func registerList(e *env.Env) {
 		}
 		if args[1].Type != types.TypeInteger {
 			return nil, fmt.Errorf("expected integer index")
+		}
+		if args[1].IntVal < 0 {
+			return nil, fmt.Errorf("list-tail: index must be non-negative, got %d", args[1].IntVal)
 		}
 		cur := args[0]
 		for i := int64(0); i < args[1].IntVal; i++ {
@@ -621,8 +627,15 @@ func registerString(e *env.Env) {
 	}))
 
 	e.Define("string->number", types.NewProcedure("string->number", func(args []*types.Value) (*types.Value, error) {
-		if len(args) < 1 || args[0].Type != types.TypeString {
+		if len(args) < 1 || len(args) > 2 {
+			return nil, fmt.Errorf("expected 1 or 2 arguments, got %d", len(args))
+		}
+		if args[0].Type != types.TypeString {
 			return nil, fmt.Errorf("expected a string")
+		}
+		if len(args) == 2 {
+			// Radix argument not yet implemented; reject for now
+			return nil, fmt.Errorf("radix argument not yet supported")
 		}
 		s := strings.TrimSpace(args[0].StrVal)
 		if s == "" {
@@ -738,7 +751,10 @@ func registerString(e *env.Env) {
 		}
 		length := int(n)
 		ch := ' '
-		if len(args) >= 2 && args[1].Type == types.TypeCharacter {
+		if len(args) >= 2 {
+			if args[1].Type != types.TypeCharacter {
+				return nil, fmt.Errorf("expected character for fill, got %s", args[1].Type)
+			}
 			ch = args[1].CharVal
 		}
 		runes := make([]rune, length)

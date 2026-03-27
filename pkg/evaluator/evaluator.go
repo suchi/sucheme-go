@@ -56,6 +56,9 @@ func evalTCO(expr *types.Value, e *env.Env) (*evalResult, error) {
 		if !ok {
 			return nil, fmt.Errorf("unbound variable: %s", expr.SymbolVal)
 		}
+		if val.Type == types.TypeUndefined {
+			return nil, fmt.Errorf("uninitialized letrec binding: %s", expr.SymbolVal)
+		}
 		return resultVal(val), nil
 
 	case types.TypeNil:
@@ -232,6 +235,9 @@ func evalDefine(expr *types.Value, e *env.Env) (*evalResult, error) {
 	// (define x expr)
 	if args[0].Type != types.TypeSymbol {
 		return nil, fmt.Errorf("define: expected symbol")
+	}
+	if len(args) != 2 {
+		return nil, fmt.Errorf("define: variable definition requires exactly one expression")
 	}
 	val, err := Eval(args[1], e)
 	if err != nil {
