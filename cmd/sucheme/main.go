@@ -152,7 +152,7 @@ func runREPL(e *env.Env, quiet bool) {
 		}
 
 		// Check for balanced parentheses
-		if !isBalanced(input) {
+		if !isComplete(input) {
 			prompt = "... "
 			continue
 		}
@@ -174,9 +174,10 @@ func runREPL(e *env.Env, quiet bool) {
 	}
 }
 
-// isBalanced checks if parentheses/brackets are balanced,
+// isComplete checks if the input is a complete expression (not awaiting more input).
+// Returns true when parentheses/brackets are balanced or over-closed,
 // respecting strings, line comments, and #|...|# block comments.
-func isBalanced(input string) bool {
+func isComplete(input string) bool {
 	runes := []rune(input)
 	depth := 0
 	inString := false

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"syscall/js"
@@ -91,24 +92,26 @@ func resetJS(this js.Value, args []js.Value) interface{} {
 // These are defined once and always reference the current outputBuf pointer.
 func registerWASMIO(e *env.Env) {
 	e.Define("display", types.NewProcedure("display", func(args []*types.Value) (*types.Value, error) {
-		if len(args) >= 1 {
-			outputMu.Lock()
-			if outputBuf != nil {
-				outputBuf.WriteString(args[0].Display())
-			}
-			outputMu.Unlock()
+		if len(args) < 1 {
+			return nil, fmt.Errorf("expected at least 1 argument")
 		}
+		outputMu.Lock()
+		if outputBuf != nil {
+			outputBuf.WriteString(args[0].Display())
+		}
+		outputMu.Unlock()
 		return types.Void(), nil
 	}))
 
 	e.Define("write", types.NewProcedure("write", func(args []*types.Value) (*types.Value, error) {
-		if len(args) >= 1 {
-			outputMu.Lock()
-			if outputBuf != nil {
-				outputBuf.WriteString(args[0].String())
-			}
-			outputMu.Unlock()
+		if len(args) < 1 {
+			return nil, fmt.Errorf("expected at least 1 argument")
 		}
+		outputMu.Lock()
+		if outputBuf != nil {
+			outputBuf.WriteString(args[0].String())
+		}
+		outputMu.Unlock()
 		return types.Void(), nil
 	}))
 
