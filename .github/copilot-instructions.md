@@ -71,12 +71,19 @@ sucheme-go/
 
 NOLICENSE（ライセンスなし）
 
+## コミットメッセージ
+
+- Conventional Commits に従う (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:`)
+- 1行目は英語の命令形
+- 2行目以降の説明文は日本語
+
 ## PR・レビュー・マージ
 
 1. 各成果物はPRとして作成する
 2. GitHub Copilotにレビューを依頼する
 3. レビュー指摘はすべて解決する
-4. CopilotレビューがNo New Commentになったら自動でmainにマージする
+4. **Copilotレビューが完了するまで絶対にマージしない** — レビューが「No New Comment」であることを必ず確認してからマージ
+5. PR本文に `\n` リテラルを使わない — 実際の改行を使うこと
 
 ## 対応プラットフォーム
 
