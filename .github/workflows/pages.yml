@@ -1,0 +1,55 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: Build WASM
+        run: |
+          mkdir -p web-ui/dist
+          GOOS=js GOARCH=wasm go build -o web-ui/dist/sucheme.wasm ./cmd/wasm 2>/dev/null || echo "WASM not yet available"
+          cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/dist/ 2>/dev/null || true
+          cp web-ui/index.html web-ui/dist/ 2>/dev/null || true
+          cp web-ui/style.css web-ui/dist/ 2>/dev/null || true
+          cp web-ui/app.js web-ui/dist/ 2>/dev/null || true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web-ui/dist
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build-wasm
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  # PR preview using artifact
+  pr-preview:
+    if: github.event_name == 'pull_request'
+    needs: build-wasm
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Web UI artifact uploaded. Download from Actions tab to preview."
