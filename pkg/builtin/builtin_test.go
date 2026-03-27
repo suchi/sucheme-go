@@ -396,6 +396,40 @@ func TestSetCdr(t *testing.T) {
 	}
 }
 
+func TestListCopy(t *testing.T) {
+	e := setup()
+	// Proper list copy
+	lst := types.FromList([]*types.Value{types.NewInteger(1), types.NewInteger(2), types.NewInteger(3)})
+	r := call(t, e, "list-copy", lst)
+	result, _ := r.ToList()
+	if len(result) != 3 || result[0].IntVal != 1 {
+		t.Error("list-copy: proper list copy failed")
+	}
+	// Mutation of copy should not affect original
+	call(t, e, "set-car!", r, types.NewInteger(99))
+	if lst.PairVal.Car.IntVal != 1 {
+		t.Error("list-copy: copy should be independent of original")
+	}
+}
+
+func TestListCopyImproper(t *testing.T) {
+	e := setup()
+	// Improper list: (1 . 2)
+	pair := types.Cons(types.NewInteger(1), types.NewInteger(2))
+	r := call(t, e, "list-copy", pair)
+	if r.PairVal.Car.IntVal != 1 || r.PairVal.Cdr.IntVal != 2 {
+		t.Error("list-copy: improper list copy failed")
+	}
+}
+
+func TestListCopyNonList(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "list-copy", types.NewInteger(42))
+	if err == nil {
+		t.Error("expected error for list-copy on non-list")
+	}
+}
+
 // =========================================================================
 // String tests
 // =========================================================================

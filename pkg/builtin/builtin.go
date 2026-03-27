@@ -444,7 +444,7 @@ func registerList(e *env.Env) {
 		}
 		idx := args[1].IntVal
 		if idx < 0 {
-			return nil, fmt.Errorf("list-ref: index must be non-negative, got %d", idx)
+			return nil, fmt.Errorf("index must be non-negative, got %d", idx)
 		}
 		cur := args[0]
 		for i := int64(0); i < idx; i++ {
@@ -467,7 +467,7 @@ func registerList(e *env.Env) {
 			return nil, fmt.Errorf("expected integer index")
 		}
 		if args[1].IntVal < 0 {
-			return nil, fmt.Errorf("list-tail: index must be non-negative, got %d", args[1].IntVal)
+			return nil, fmt.Errorf("index must be non-negative, got %d", args[1].IntVal)
 		}
 		cur := args[0]
 		for i := int64(0); i < args[1].IntVal; i++ {
@@ -499,13 +499,35 @@ func registerList(e *env.Env) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
+		// Proper list
 		lst, err := args[0].ToList()
-		if err != nil {
-			return args[0], nil // non-list returns itself
+		if err == nil {
+			cp := make([]*types.Value, len(lst))
+			copy(cp, lst)
+			return types.FromList(cp), nil
 		}
-		cp := make([]*types.Value, len(lst))
-		copy(cp, lst)
-		return types.FromList(cp), nil
+		// Non-pair is an error
+		if args[0].Type != types.TypePair {
+			return nil, fmt.Errorf("expected list")
+		}
+		// Improper list: copy pair chain
+		var head *types.Value
+		var last *types.Value
+		cur := args[0]
+		for cur.Type == types.TypePair {
+			newPair := types.Cons(cur.PairVal.Car, types.Nil())
+			if head == nil {
+				head = newPair
+			} else {
+				last.PairVal.Cdr = newPair
+			}
+			last = newPair
+			cur = cur.PairVal.Cdr
+		}
+		if last != nil {
+			last.PairVal.Cdr = cur
+		}
+		return head, nil
 	}))
 
 	// Note: apply is registered by the evaluator to support both builtins and lambdas.
@@ -621,7 +643,7 @@ func registerString(e *env.Env) {
 		runes := []rune(args[0].StrVal)
 		start, end := args[1].IntVal, args[2].IntVal
 		if start < 0 || end < start || end > int64(len(runes)) {
-			return nil, fmt.Errorf("substring: index out of range")
+			return nil, fmt.Errorf("index out of range")
 		}
 		return types.NewString(string(runes[start:end])), nil
 	}))

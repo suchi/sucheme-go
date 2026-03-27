@@ -252,6 +252,14 @@ func TestLetrec(t *testing.T) {
 	}
 }
 
+func TestLetrecUninitialized(t *testing.T) {
+	// Referencing a later binding during init should be an error (y is still undefined when x's init runs)
+	err := evalErr(t, "(letrec ((x y) (y 1)) x)")
+	if err == nil {
+		t.Error("expected error for uninitialized letrec binding reference")
+	}
+}
+
 func TestNamedLet(t *testing.T) {
 	r := evalHelper(t, "(let loop ((i 0) (sum 0)) (if (= i 5) sum (loop (+ i 1) (+ sum i))))")
 	if r.IntVal != 10 {

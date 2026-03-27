@@ -738,20 +738,29 @@ func expandQQ(expr *types.Value, e *env.Env, depth int) (*types.Value, error) {
 	if expr.Type == types.TypeVector {
 		var elems []*types.Value
 		for _, el := range expr.VecVal {
-			if el.Type == types.TypePair && el.PairVal.Car.Type == types.TypeSymbol && el.PairVal.Car.SymbolVal == "unquote-splicing" && depth == 1 {
-				spliceArgs, err := el.PairVal.Cdr.ToList()
-				if err != nil || len(spliceArgs) != 1 {
-					return nil, fmt.Errorf("unquote-splicing requires exactly one argument")
+			if el.Type == types.TypePair && el.PairVal.Car.Type == types.TypeSymbol && el.PairVal.Car.SymbolVal == "unquote-splicing" {
+				if depth == 1 {
+					spliceArgs, err := el.PairVal.Cdr.ToList()
+					if err != nil || len(spliceArgs) != 1 {
+						return nil, fmt.Errorf("unquote-splicing requires exactly one argument")
+					}
+					val, err := Eval(spliceArgs[0], e)
+					if err != nil {
+						return nil, err
+					}
+					spliced, err := val.ToList()
+					if err != nil {
+						return nil, fmt.Errorf("unquote-splicing in vector: expected list")
+					}
+					elems = append(elems, spliced...)
+				} else {
+					// Nested: preserve structure, decrease depth
+					expanded, err := expandQQ(el, e, depth-1)
+					if err != nil {
+						return nil, err
+					}
+					elems = append(elems, expanded)
 				}
-				val, err := Eval(spliceArgs[0], e)
-				if err != nil {
-					return nil, err
-				}
-				spliced, err := val.ToList()
-				if err != nil {
-					return nil, fmt.Errorf("unquote-splicing in vector: expected list")
-				}
-				elems = append(elems, spliced...)
 			} else {
 				expanded, err := expandQQ(el, e, depth)
 				if err != nil {
@@ -872,16 +881,16 @@ func evalBodyTCO(body []*types.Value, e *env.Env) (*evalResult, error) {
 func RegisterApply(e *env.Env) {
 	e.Define("apply", types.NewProcedure("apply", func(args []*types.Value) (*types.Value, error) {
 		if len(args) < 2 {
-			return nil, fmt.Errorf("apply: expected at least 2 arguments")
+			return nil, fmt.Errorf("expected at least 2 arguments")
 		}
 		proc := args[0]
 		if proc.Type != types.TypeProcedure {
-			return nil, fmt.Errorf("apply: expected a procedure, got %s", proc.Type)
+			return nil, fmt.Errorf("expected a procedure, got %s", proc.Type)
 		}
 		last := args[len(args)-1]
 		lst, err := last.ToList()
 		if err != nil {
-			return nil, fmt.Errorf("apply: last argument must be a list")
+			return nil, fmt.Errorf("last argument must be a list")
 		}
 		allArgs := make([]*types.Value, 0, len(args)-2+len(lst))
 		allArgs = append(allArgs, args[1:len(args)-1]...)
