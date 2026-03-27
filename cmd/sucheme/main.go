@@ -237,11 +237,20 @@ func isComplete(input string) bool {
 		// to avoid counting #\( or #\) as parentheses
 		if ch == '#' && i+1 < len(runes) && runes[i+1] == '\\' {
 			i += 2 // skip '#' and '\'
-			// Skip the character name (e.g., space, newline, x41)
-			for i < len(runes) && runes[i] != ' ' && runes[i] != '\t' &&
-				runes[i] != '\n' && runes[i] != '(' && runes[i] != ')' &&
-				runes[i] != '[' && runes[i] != ']' && runes[i] != '"' &&
-				runes[i] != ';' {
+			if i >= len(runes) {
+				// Input ends with #\ — incomplete
+				return false
+			}
+			// Always consume at least one character (the literal char itself)
+			i++
+			// Then skip remaining characters of named character literals
+			// (e.g., #\space, #\newline, #\x41)
+			for i < len(runes) {
+				c := runes[i]
+				if c == ' ' || c == '\t' || c == '\n' || c == '(' ||
+					c == ')' || c == '[' || c == ']' || c == '"' || c == ';' {
+					break
+				}
 				i++
 			}
 			i-- // will be incremented by for loop
