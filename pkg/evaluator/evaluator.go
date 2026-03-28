@@ -125,6 +125,10 @@ func evalList(expr *types.Value, e *env.Env) (*evalResult, error) {
 			return evalCaseLambda(expr, e)
 		case "parameterize":
 			return evalParameterize(expr, e)
+		case "define-library":
+			return evalDefineLibrary(expr, e)
+		case "import":
+			return evalImport(expr, e)
 		}
 
 		// Check if head is a macro

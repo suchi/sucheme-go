@@ -177,7 +177,7 @@ pie title R7RS 対応状況
 
 | 機能 | 状態 | 備考 |
 |------|------|------|
-| `define-library` | 未対応 | |
-| `import` | 未対応 | |
-| `export` | 未対応 | |
-| `(scheme base)` | 未対応 | |
+| `define-library` | 対応完了 | export (rename含む)、begin、import |
+| `import` | 対応完了 | only、except、prefix、rename |
+| `export` | 対応完了 | rename 対応 |
+| `(scheme base)` | 部分対応 | グローバル環境のバインディングを公開 |
