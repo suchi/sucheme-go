@@ -197,23 +197,19 @@ func matchSingle(pat *types.Value, form *types.Value, sr *types.SyntaxRules, bin
 
 		// Check for dotted pattern tail
 		if patTail != nil && patTail.Type != types.TypeNil {
-			// Dotted pattern: (a b . rest)
-			if !matchPattern(patElems, formElems[:min(len(patElems), len(formElems))], sr, bindings) {
+			// Dotted pattern: (a b ... . rest)
+			// Count how many fixed patterns (non-ellipsis) are in patElems
+			// matchPattern handles ellipsis correctly, so pass all formElems
+			// and let it determine how many to consume
+			if !matchPattern(patElems, formElems, sr, bindings) {
 				return false
 			}
-			if len(formElems) < len(patElems) {
-				return false
-			}
-			// Bind rest to remaining elements + tail
-			var rest *types.Value
-			if formTail != nil && formTail.Type != types.TypeNil {
-				// Reconstruct dotted list: remaining elements . formTail
-				rest = formTail
-				for i := len(formElems) - 1; i >= len(patElems); i-- {
-					rest = types.Cons(formElems[i], rest)
-				}
-			} else {
-				rest = types.FromList(formElems[len(patElems):])
+			// After matchPattern, the remaining forms (if any) + formTail go to patTail
+			// matchPattern consumes exactly len(formElems) forms,
+			// so the rest is just formTail
+			rest := formTail
+			if rest == nil {
+				rest = types.Nil()
 			}
 			return matchSingle(patTail, rest, sr, bindings)
 		}
@@ -248,19 +244,21 @@ func listAndTail(v *types.Value) ([]*types.Value, *types.Value) {
 	return elems, cur
 }
 
-// collectPatternVars collects all pattern variable names in a pattern.
+// collectPatternVars collects all unique pattern variable names in a pattern.
 func collectPatternVars(pat *types.Value, sr *types.SyntaxRules) []string {
 	var vars []string
-	collectVarsHelper(pat, sr, &vars)
+	seen := make(map[string]bool)
+	collectVarsHelper(pat, sr, &vars, seen)
 	return vars
 }
 
-func collectVarsHelper(pat *types.Value, sr *types.SyntaxRules, vars *[]string) {
+func collectVarsHelper(pat *types.Value, sr *types.SyntaxRules, vars *[]string, seen map[string]bool) {
 	switch pat.Type {
 	case types.TypeSymbol:
 		name := pat.SymbolVal
-		if name != "_" && name != sr.Ellipsis && !isLiteral(name, sr) {
+		if name != "_" && name != sr.Ellipsis && !isLiteral(name, sr) && !seen[name] {
 			*vars = append(*vars, name)
+			seen[name] = true
 		}
 	case types.TypePair:
 		elems, tail := listAndTail(pat)
@@ -268,10 +266,10 @@ func collectVarsHelper(pat *types.Value, sr *types.SyntaxRules, vars *[]string) 
 			if e.Type == types.TypeSymbol && e.SymbolVal == sr.Ellipsis {
 				continue
 			}
-			collectVarsHelper(e, sr, vars)
+			collectVarsHelper(e, sr, vars, seen)
 		}
 		if tail != nil && tail.Type != types.TypeNil {
-			collectVarsHelper(tail, sr, vars)
+			collectVarsHelper(tail, sr, vars, seen)
 		}
 	}
 }
