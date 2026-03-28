@@ -171,12 +171,18 @@ sucheme-go/
 
 ```mermaid
 graph LR
-    types --- lexer --- parser
-    types --- env --- evaluator
-    types --- builtin
-    parser --> evaluator
-    builtin -.->|"依存しない"| evaluator
+    lexer --> types
+    parser --> lexer
+    parser --> types
+    env --> types
+    evaluator --> types
+    evaluator --> env
+    evaluator --> parser
+    builtin --> types
+    builtin --> env
 ```
+
+> **注意**: `builtin` は `evaluator` に依存しません。`evaluator.Eval` を呼ぶ必要がある関数は `evaluator` パッケージ内の `Register*` 関数として実装されています。
 
 **循環依存の回避**: `types` パッケージが `Env` インターフェースを定義し、`env` パッケージがそれを実装することで循環依存を防いでいます。また、`evaluator.Eval` を呼ぶ必要があるビルトイン関数（`apply`, `map`, `for-each` 等）は `pkg/builtin` ではなく `pkg/evaluator` に `Register*` 関数として配置されています。
 
