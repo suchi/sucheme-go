@@ -92,7 +92,8 @@ type Value struct {
 	VecVal    []*Value
 	ProcVal   *Procedure
 	ByteVec   []byte
-	ValuesVal []*Value // for TypeValues (multiple return values)
+	ValuesVal []*Value      // for TypeValues (multiple return values)
+	SyntaxVal *SyntaxRules  // for TypeSyntaxRules
 }
 
 // Pair is a cons cell.
@@ -115,6 +116,26 @@ type Lambda struct {
 	Body   []*Value
 	Env    Env
 	Name   string
+}
+
+// SyntaxRules represents a compiled syntax-rules macro transformer.
+type SyntaxRules struct {
+	Name     string       // macro name (for error messages)
+	Ellipsis string       // ellipsis symbol (default "...")
+	Literals []string     // literal identifiers
+	Rules    []SyntaxRule // (pattern template) pairs
+	DefEnv   Env          // environment where macro was defined
+}
+
+// SyntaxRule is a single (pattern template) pair in syntax-rules.
+type SyntaxRule struct {
+	Pattern  *Value // the pattern S-expression
+	Template *Value // the template S-expression
+}
+
+// NewSyntaxRules creates a syntax-rules value.
+func NewSyntaxRules(sr *SyntaxRules) *Value {
+	return &Value{Type: TypeSyntaxRules, SyntaxVal: sr}
 }
 
 // BuiltinFunc is the signature for builtin functions.
