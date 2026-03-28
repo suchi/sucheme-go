@@ -1,0 +1,130 @@
+// Package evaluator - parameter.go implements R7RS parameters (make-parameter, parameterize).
+package evaluator
+
+import (
+	"fmt"
+
+	"github.com/suchi/sucheme-go/pkg/env"
+	"github.com/suchi/sucheme-go/pkg/types"
+)
+
+// Parameter represents a dynamically-bound parameter object.
+type Parameter struct {
+	value     *types.Value
+	converter func(*types.Value) (*types.Value, error) // optional converter
+}
+
+// parameterStack tracks dynamic parameter bindings.
+// Each entry maps parameter identity to its current value.
+var parameterStack []map[*Parameter]*types.Value
+
+// RegisterParameterBuiltins registers make-parameter and related procedures.
+func RegisterParameterBuiltins(e *env.Env) {
+	e.Define("make-parameter", types.NewProcedure("make-parameter", func(args []*types.Value) (*types.Value, error) {
+		if len(args) < 1 || len(args) > 2 {
+			return nil, fmt.Errorf("expected 1 or 2 arguments")
+		}
+
+		param := &Parameter{value: args[0]}
+
+		if len(args) == 2 {
+			if args[1].Type != types.TypeProcedure {
+				return nil, fmt.Errorf("expected procedure for converter")
+			}
+			converter := args[1]
+			param.converter = func(v *types.Value) (*types.Value, error) {
+				return callProc(converter, []*types.Value{v})
+			}
+			// Apply converter to initial value
+			converted, err := param.converter(args[0])
+			if err != nil {
+				return nil, err
+			}
+			param.value = converted
+		}
+
+		// A parameter object is a procedure that returns its current value when called with 0 args
+		proc := types.NewProcedure("parameter", func(callArgs []*types.Value) (*types.Value, error) {
+			if len(callArgs) == 0 {
+				// Look up in dynamic parameter stack first
+				for i := len(parameterStack) - 1; i >= 0; i-- {
+					if v, ok := parameterStack[i][param]; ok {
+						return v, nil
+					}
+				}
+				return param.value, nil
+			}
+			return nil, fmt.Errorf("parameter called with arguments; use parameterize to change")
+		})
+
+		// Store the Parameter pointer in the procedure for parameterize to find
+		proc.ProcVal.ParamRef = param
+
+		return proc, nil
+	}))
+}
+
+// evalParameterize implements (parameterize ((param val) ...) body ...)
+func evalParameterize(expr *types.Value, e *env.Env) (*evalResult, error) {
+	args, err := listArgs(expr)
+	if err != nil || len(args) < 2 {
+		return nil, fmt.Errorf("parameterize requires bindings and body")
+	}
+
+	bindings, err := args[0].ToList()
+	if err != nil {
+		return nil, fmt.Errorf("parameterize: invalid bindings")
+	}
+
+	// Build parameter frame
+	frame := make(map[*Parameter]*types.Value)
+
+	for _, b := range bindings {
+		pair, err := b.ToList()
+		if err != nil || len(pair) != 2 {
+			return nil, fmt.Errorf("parameterize: each binding must be (param expr)")
+		}
+
+		// Evaluate the parameter expression to get the parameter object
+		paramVal, err := Eval(pair[0], e)
+		if err != nil {
+			return nil, err
+		}
+		if paramVal.Type != types.TypeProcedure || paramVal.ProcVal.ParamRef == nil {
+			return nil, fmt.Errorf("parameterize: expected parameter object")
+		}
+		param := paramVal.ProcVal.ParamRef.(*Parameter)
+
+		// Evaluate the value expression
+		val, err := Eval(pair[1], e)
+		if err != nil {
+			return nil, err
+		}
+
+		// Apply converter if present
+		if param.converter != nil {
+			val, err = param.converter(val)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		frame[param] = val
+	}
+
+	// Push frame, evaluate body, pop frame
+	parameterStack = append(parameterStack, frame)
+
+	var result *types.Value
+	var evalErr error
+	for _, bodyExpr := range args[1:] {
+		result, evalErr = Eval(bodyExpr, e)
+		if evalErr != nil {
+			parameterStack = parameterStack[:len(parameterStack)-1]
+			return nil, evalErr
+		}
+	}
+
+	parameterStack = parameterStack[:len(parameterStack)-1]
+	return resultVal(result), nil
+}
