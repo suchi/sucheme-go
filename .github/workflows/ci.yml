@@ -62,9 +62,13 @@ jobs:
           if [ -f coverage.out ]; then
             echo "### Coverage: ${{ steps.coverage.outputs.percentage }}%" >> dashboard.md
             echo "" >> dashboard.md
-            echo "| Package | Coverage |" >> dashboard.md
-            echo "|---------|----------|" >> dashboard.md
-            go tool cover -func=coverage.out | grep -v "total:" | awk '{split($1,a,":"); pkg=a[1]; gsub(/.*\//, "", pkg)} !seen[pkg]++ {print "| " pkg " | " $3 " |"}' >> dashboard.md
+            TOTAL_LINE=$(go tool cover -func=coverage.out | tail -1)
+            TOTAL_PCT=$(echo "$TOTAL_LINE" | awk '{print $3}')
+            echo "### Total: ${TOTAL_PCT}" >> dashboard.md
+            echo "" >> dashboard.md
+            echo "| File | Coverage |" >> dashboard.md
+            echo "|------|----------|" >> dashboard.md
+            go tool cover -func=coverage.out | grep -v "total:" | awk '{split($1,a,":"); file=a[1]} !seen[file]++ {print "| " file " | " $3 " |"}' >> dashboard.md
           else
             echo "Coverage data not available (tests may have failed)." >> dashboard.md
           fi
