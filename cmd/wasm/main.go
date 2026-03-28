@@ -31,6 +31,8 @@ func init() {
 	evaluator.RegisterMapForEach(globalEnv)
 	evaluator.RegisterParameterBuiltins(globalEnv)
 	evaluator.RegisterPortBuiltins(globalEnv)
+	evaluator.RegisterContinuationBuiltins(globalEnv)
+	evaluator.RegisterLibraryBuiltins(globalEnv)
 	registerWASMIO(globalEnv)
 }
 
@@ -94,6 +96,8 @@ func resetJS(this js.Value, args []js.Value) interface{} {
 	evaluator.RegisterMapForEach(globalEnv)
 	evaluator.RegisterParameterBuiltins(globalEnv)
 	evaluator.RegisterPortBuiltins(globalEnv)
+	evaluator.RegisterContinuationBuiltins(globalEnv)
+	evaluator.RegisterLibraryBuiltins(globalEnv)
 	registerWASMIO(globalEnv)
 	return nil
 }
