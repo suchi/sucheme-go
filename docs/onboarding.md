@@ -49,7 +49,7 @@
 
 ### 前提条件
 
-- **Go 1.24.7+** (`go.mod` で指定)
+- **Go 1.24+** (`go.mod` で指定)
 - **Git**
 
 ### 手順
@@ -83,7 +83,12 @@ go build -o sucheme ./cmd/sucheme/
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
 
 # Go ランタイムの wasm_exec.js をコピー
-cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+# wasm_exec.js の場所は Go バージョンにより異なる
+if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
+  cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
+  cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
+fi
 
 # ローカル HTTP サーバを起動して Web UI を確認
 cd web-ui
@@ -184,7 +189,7 @@ graph LR
 
 > **注意**: `builtin` は `evaluator` に依存しません。`evaluator.Eval` を呼ぶ必要がある関数は `evaluator` パッケージ内の `Register*` 関数として実装されています。
 
-**循環依存の回避**: `types` パッケージが `Env` インターフェースを定義し、`env` パッケージがそれを実装することで循環依存を防いでいます。また、`evaluator.Eval` を呼ぶ必要があるビルトイン関数（`apply`, `map`, `for-each` 等）は `pkg/builtin` ではなく `pkg/evaluator` に `Register*` 関数として配置されています。
+**循環依存の回避**: `types` パッケージは他のパッケージを import せず Scheme 値の型定義だけを持ち、`parser` / `env` / `evaluator` / `builtin` などが一方向に `types` に依存する構造とすることで循環依存を防いでいます。また、`evaluator.Eval` を呼ぶ必要があるビルトイン関数（`apply`, `map`, `for-each` 等）は `pkg/builtin` ではなく `pkg/evaluator` に `Register*` 関数として配置され、`builtin` が `evaluator` に依存しないようにしています。
 
 ### evaluator パッケージのファイル構成
 
@@ -197,6 +202,8 @@ graph LR
 | `exception.go` | 例外処理（`raise`, `guard`, `with-exception-handler`）、`case-lambda`, `RegisterExceptionBuiltins` |
 | `parameter.go` | パラメータオブジェクト（`make-parameter`, `parameterize`）、`RegisterParameterBuiltins` |
 | `port.go` | ポートI/O（`open-input-string`, `read-char`, `write-char` 等）、`RegisterPortBuiltins` |
+| `continuation.go` | 継続（`call/cc`, `dynamic-wind`, `call-with-values`）、`RegisterContinuationBuiltins` |
+| `library.go` | ライブラリシステム（`define-library`, `import`）、`RegisterLibraryBuiltins` |
 | `bench_test.go` | パフォーマンスベンチマーク |
 
 ---
@@ -296,7 +303,9 @@ evaluator.RegisterApply(e)              // apply を登録
 evaluator.RegisterExceptionBuiltins(e)  // raise, guard, with-exception-handler 等
 evaluator.RegisterMapForEach(e)         // map, for-each, filter
 evaluator.RegisterParameterBuiltins(e)  // make-parameter
-evaluator.RegisterPortBuiltins(e)       // ポートI/O関数
+evaluator.RegisterPortBuiltins(e)            // ポートI/O関数
+evaluator.RegisterContinuationBuiltins(e)    // call/cc, dynamic-wind, call-with-values
+evaluator.RegisterLibraryBuiltins(e)         // ライブラリシステム（define-library, import）
 // display, write, newline は CLI/WASM で異なる実装を登録
 ```
 
@@ -533,7 +542,12 @@ go build -ldflags="-s -w -X main.Version=v1.0.0" -o sucheme ./cmd/sucheme/
 
 ```bash
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
-cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+# wasm_exec.js の場所は Go バージョンにより異なる
+if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
+  cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
+  cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
+fi
 ```
 
 ### CI/CD
@@ -542,7 +556,7 @@ cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
 
 | ワークフロー | トリガー | 内容 |
 |-------------|---------|------|
-| `ci.yml` | push (`main`, `feature/*`, `claude/*`), PR to `main` | テスト（ubuntu/macos/windows, Go 1.24.7）、カバレッジ、ベンチマーク、WASM ビルド |
+| `ci.yml` | push (`main`, `feature/*`, `claude/*`), PR to `main` | テスト（ubuntu/macos/windows, Go 1.24 系）、カバレッジ、ベンチマーク、WASM ビルド |
 | `pages.yml` | push (`main`), PR to `main` | WASM ビルド + Pages 用アーティファクト作成（main のみデプロイ） |
 | `release.yml` | タグ push (`v*`) | マルチプラットフォームバイナリ (linux/darwin/windows, amd64/arm64) のビルドとリリース |
 
@@ -843,14 +857,19 @@ go test -race ./...
 ### WASM ビルドが失敗する
 
 ```bash
-# Go のバージョンを確認（1.24.7+ が必要）
+# Go のバージョンを確認（1.24+ が必要）
 go version
 
 # 環境変数を明示的に設定して実行
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
 
 # wasm_exec.js のバージョンが Go と一致しているか確認（必ず同じ Go バージョンからコピー）
-cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+# wasm_exec.js の場所は Go バージョンにより異なる
+if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
+  cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
+  cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
+fi
 ```
 
 ### 循環依存エラー (`import cycle not allowed`)
