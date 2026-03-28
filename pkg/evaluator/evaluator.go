@@ -1025,7 +1025,7 @@ func RegisterApply(e *env.Env) {
 	}))
 }
 
-// RegisterMapForEach registers map and for-each that work with both builtins and lambdas.
+// RegisterMapForEach registers map, for-each, and filter that work with both builtins and lambdas.
 func RegisterMapForEach(e *env.Env) {
 	e.Define("map", types.NewProcedure("map", func(args []*types.Value) (*types.Value, error) {
 		if len(args) < 2 {
@@ -1097,12 +1097,24 @@ func RegisterMapForEach(e *env.Env) {
 	}))
 }
 
-func EvalString(input string, e *env.Env) (*types.Value, error) {
-	exprs, err := parser.ParseAllString(input)
-	if err != nil {
-		return nil, err
+// EvalString parses and evaluates Scheme source code.
+// It catches unhandled SchemeExceptions and converts them to Go errors.
+func EvalString(input string, e *env.Env) (result *types.Value, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if exc, ok := r.(SchemeException); ok {
+				err = fmt.Errorf("unhandled exception: %s", exc.Value.Display())
+				result = nil
+				return
+			}
+			panic(r) // re-panic non-SchemeException
+		}
+	}()
+
+	exprs, parseErr := parser.ParseAllString(input)
+	if parseErr != nil {
+		return nil, parseErr
 	}
-	var result *types.Value
 	for _, expr := range exprs {
 		result, err = Eval(expr, e)
 		if err != nil {

@@ -10,11 +10,12 @@ import (
 
 // SchemeException is used to propagate Scheme exceptions via Go panic/recover.
 type SchemeException struct {
-	Value *types.Value
+	Value       *types.Value
+	Continuable bool // true for raise-continuable, false for raise
 }
 
-// exceptionHandlerStack is a thread-local stack of exception handlers.
-// In a single-threaded interpreter, a global stack suffices.
+// exceptionHandlerStack is a global stack of exception handlers.
+// It is safe only for single-threaded use; concurrent evaluators must not share it.
 var exceptionHandlerStack []*types.Value
 
 // RegisterExceptionBuiltins registers raise, raise-continuable,
@@ -32,8 +33,7 @@ func RegisterExceptionBuiltins(e *env.Env) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
-		// For now, raise-continuable behaves like raise
-		raiseException(args[0])
+		raiseContinuable(args[0])
 		return nil, nil // unreachable
 	}))
 
@@ -51,9 +51,12 @@ func RegisterExceptionBuiltins(e *env.Env) {
 
 	e.Define("error", types.NewProcedure("error", func(args []*types.Value) (*types.Value, error) {
 		if len(args) == 0 {
-			raiseException(types.NewString("error"))
+			return nil, fmt.Errorf("expected at least 1 argument")
 		}
-		msg := args[0].Display()
+		if args[0].Type != types.TypeString {
+			return nil, fmt.Errorf("expected string message, got %s", args[0].Type)
+		}
+		msg := args[0].StrVal
 		if len(args) > 1 {
 			irritants := make([]*types.Value, len(args)-1)
 			copy(irritants, args[1:])
@@ -83,37 +86,48 @@ func RegisterExceptionBuiltins(e *env.Env) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
-		if args[0].Type == types.TypePair && args[0].PairVal.Car.Type == types.TypeSymbol &&
-			args[0].PairVal.Car.SymbolVal == "error-object" {
-			lst, _ := args[0].ToList()
-			if len(lst) >= 2 {
-				return lst[1], nil
-			}
+		if args[0].Type != types.TypePair || args[0].PairVal.Car.Type != types.TypeSymbol ||
+			args[0].PairVal.Car.SymbolVal != "error-object" {
+			return nil, fmt.Errorf("expected error object")
 		}
-		return types.NewString(args[0].Display()), nil
+		lst, err := args[0].ToList()
+		if err != nil || len(lst) < 2 {
+			return nil, fmt.Errorf("invalid error object")
+		}
+		return lst[1], nil
 	}))
 
 	e.Define("error-object-irritants", types.NewProcedure("error-object-irritants", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
-		if args[0].Type == types.TypePair && args[0].PairVal.Car.Type == types.TypeSymbol &&
-			args[0].PairVal.Car.SymbolVal == "error-object" {
-			lst, _ := args[0].ToList()
-			if len(lst) >= 3 {
-				return types.FromList(lst[2:]), nil
-			}
+		if args[0].Type != types.TypePair || args[0].PairVal.Car.Type != types.TypeSymbol ||
+			args[0].PairVal.Car.SymbolVal != "error-object" {
+			return nil, fmt.Errorf("expected error object")
+		}
+		lst, err := args[0].ToList()
+		if err != nil {
+			return nil, fmt.Errorf("invalid error object")
+		}
+		if len(lst) >= 3 {
+			return types.FromList(lst[2:]), nil
 		}
 		return types.Nil(), nil
 	}))
 }
 
-// raiseException raises a Scheme exception by panicking with a SchemeException.
+// raiseException raises a non-continuable Scheme exception.
 func raiseException(val *types.Value) {
-	panic(SchemeException{Value: val})
+	panic(SchemeException{Value: val, Continuable: false})
+}
+
+// raiseContinuable raises a continuable Scheme exception.
+func raiseContinuable(val *types.Value) {
+	panic(SchemeException{Value: val, Continuable: true})
 }
 
 // withExceptionHandler installs a handler and runs a thunk.
+// For non-continuable raise, the handler's return value causes a re-raise.
 func withExceptionHandler(handler, thunk *types.Value) (result *types.Value, err error) {
 	exceptionHandlerStack = append(exceptionHandlerStack, handler)
 
@@ -121,16 +135,20 @@ func withExceptionHandler(handler, thunk *types.Value) (result *types.Value, err
 		exceptionHandlerStack = exceptionHandlerStack[:len(exceptionHandlerStack)-1]
 		if r := recover(); r != nil {
 			if exc, ok := r.(SchemeException); ok {
-				// Call the handler with the exception value
 				handlerResult, herr := callProc(handler, []*types.Value{exc.Value})
 				if herr != nil {
 					err = herr
 					return
 				}
-				result = handlerResult
+				if exc.Continuable {
+					// raise-continuable: handler return value is the result
+					result = handlerResult
+				} else {
+					// raise (non-continuable): handler returned, which is an error
+					raiseException(types.NewString("handler returned from non-continuable exception"))
+				}
 				return
 			}
-			// Re-panic for non-SchemeException panics
 			panic(r)
 		}
 	}()
@@ -139,12 +157,9 @@ func withExceptionHandler(handler, thunk *types.Value) (result *types.Value, err
 	return
 }
 
-// callProc calls a procedure (builtin or lambda) with arguments.
+// callProc calls a procedure (builtin or lambda) with arguments,
+// using applyProc for consistent error formatting and TCO.
 func callProc(proc *types.Value, args []*types.Value) (*types.Value, error) {
-	if proc.ProcVal.IsBuiltin {
-		return proc.ProcVal.Builtin(args)
-	}
-	// Lambda: use applyProc + trampoline
 	result, err := applyProc(proc, args)
 	if err != nil {
 		return nil, err
@@ -255,113 +270,78 @@ func evalGuard(expr *types.Value, e *env.Env) (*evalResult, error) {
 }
 
 // evalCaseLambda implements (case-lambda (formals body ...) ...)
+// Each clause is pre-validated and stored as a Lambda for TCO support.
 func evalCaseLambda(expr *types.Value, e *env.Env) (*evalResult, error) {
 	args, err := listArgs(expr)
 	if err != nil || len(args) == 0 {
 		return nil, fmt.Errorf("invalid case-lambda syntax")
 	}
 
-	// Store the clauses and environment
-	type caseLambdaClause struct {
-		params *types.Value
-		body   []*types.Value
-	}
-
-	var clauses []caseLambdaClause
+	// Pre-validate and compile all clauses into Lambdas
+	var lambdas []*types.Lambda
 	for _, clause := range args {
 		parts, err := clause.ToList()
 		if err != nil || len(parts) < 2 {
 			return nil, fmt.Errorf("case-lambda: each clause must have formals and body")
 		}
-		clauses = append(clauses, caseLambdaClause{
-			params: parts[0],
-			body:   parts[1:],
-		})
+		formals := parts[0]
+		body := parts[1:]
+
+		lam := &types.Lambda{
+			Body: body,
+			Env:  e,
+		}
+
+		if formals.Type == types.TypeSymbol {
+			// (rest body ...) - matches any number
+			lam.Params = types.LambdaParams{IsRest: true, Rest: formals.SymbolVal}
+		} else if formals.Type == types.TypeNil {
+			// () - matches 0 args
+			lam.Params = types.LambdaParams{Fixed: []string{}}
+		} else {
+			// (a b c) or (a b . rest)
+			paramList, err := formals.ToList()
+			if err != nil {
+				// Dotted: (a b . rest)
+				fixed, rest, perr := parseParamsDotted(formals)
+				if perr != nil {
+					return nil, fmt.Errorf("case-lambda: invalid formals")
+				}
+				lam.Params = types.LambdaParams{Fixed: fixed, Rest: rest, HasRest: rest != ""}
+			} else {
+				names := make([]string, len(paramList))
+				for i, p := range paramList {
+					if p.Type != types.TypeSymbol {
+						return nil, fmt.Errorf("case-lambda: formal must be a symbol, got %s", p.Type)
+					}
+					names[i] = p.SymbolVal
+				}
+				lam.Params = types.LambdaParams{Fixed: names}
+			}
+		}
+		lambdas = append(lambdas, lam)
 	}
 
 	// Create a procedure that dispatches based on argument count
 	proc := types.NewProcedure("case-lambda", func(callArgs []*types.Value) (*types.Value, error) {
-		for _, clause := range clauses {
-			params := clause.params
-
-			// Check if this clause's formals match the argument count
-			if params.Type == types.TypeSymbol {
-				// (rest-param body ...) - matches any number of args
-				callEnv := env.New(e)
-				callEnv.Define(params.SymbolVal, types.FromList(callArgs))
-				var result *types.Value
-				var err error
-				for _, bodyExpr := range clause.body {
-					result, err = Eval(bodyExpr, callEnv)
-					if err != nil {
-						return nil, err
-					}
-				}
-				return result, nil
+		for _, lam := range lambdas {
+			if lam.Params.IsRest {
+				// Matches any number of args
+				lamProc := types.NewLambdaProcedure("case-lambda", lam)
+				return callProc(lamProc, callArgs)
 			}
-
-			if params.Type == types.TypeNil {
-				// () - matches 0 args
-				if len(callArgs) == 0 {
-					callEnv := env.New(e)
-					var result *types.Value
-					var err error
-					for _, bodyExpr := range clause.body {
-						result, err = Eval(bodyExpr, callEnv)
-						if err != nil {
-							return nil, err
-						}
-					}
-					return result, nil
+			if lam.Params.HasRest {
+				// (a b . rest) - at least len(Fixed) args
+				if len(callArgs) >= len(lam.Params.Fixed) {
+					lamProc := types.NewLambdaProcedure("case-lambda", lam)
+					return callProc(lamProc, callArgs)
 				}
 				continue
 			}
-
-			// (a b c ...) - fixed params, possibly with rest
-			paramList, err := params.ToList()
-			if err != nil {
-				// Dotted: (a b . rest)
-				fixed, rest, perr := parseParamsDotted(params)
-				if perr != nil {
-					continue
-				}
-				if len(callArgs) >= len(fixed) {
-					callEnv := env.New(e)
-					for i, p := range fixed {
-						callEnv.Define(p, callArgs[i])
-					}
-					if rest != "" {
-						callEnv.Define(rest, types.FromList(callArgs[len(fixed):]))
-					}
-					var result *types.Value
-					for _, bodyExpr := range clause.body {
-						result, err = Eval(bodyExpr, callEnv)
-						if err != nil {
-							return nil, err
-						}
-					}
-					return result, nil
-				}
-				continue
-			}
-
-			// Proper list params
-			if len(callArgs) == len(paramList) {
-				callEnv := env.New(e)
-				for i, p := range paramList {
-					if p.Type != types.TypeSymbol {
-						break
-					}
-					callEnv.Define(p.SymbolVal, callArgs[i])
-				}
-				var result *types.Value
-				for _, bodyExpr := range clause.body {
-					result, err = Eval(bodyExpr, callEnv)
-					if err != nil {
-						return nil, err
-					}
-				}
-				return result, nil
+			// Fixed args only
+			if len(callArgs) == len(lam.Params.Fixed) {
+				lamProc := types.NewLambdaProcedure("case-lambda", lam)
+				return callProc(lamProc, callArgs)
 			}
 		}
 		return nil, fmt.Errorf("case-lambda: no matching clause for %d arguments", len(callArgs))

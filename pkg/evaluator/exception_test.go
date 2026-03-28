@@ -12,22 +12,22 @@ import (
 // raise and with-exception-handler
 // =========================================================================
 
-func TestRaiseWithHandler(t *testing.T) {
+func TestRaiseContinuableWithHandler(t *testing.T) {
 	r := evalHelper(t, `
 		(with-exception-handler
 			(lambda (e) (string-append "caught: " e))
-			(lambda () (raise "test")))
+			(lambda () (raise-continuable "test")))
 	`)
 	if r.StrVal != "caught: test" {
 		t.Errorf("expected 'caught: test', got %s", r.String())
 	}
 }
 
-func TestRaiseNumber(t *testing.T) {
+func TestRaiseContinuableNumber(t *testing.T) {
 	r := evalHelper(t, `
 		(with-exception-handler
 			(lambda (e) (+ e 100))
-			(lambda () (raise 42)))
+			(lambda () (raise-continuable 42)))
 	`)
 	if r.IntVal != 142 {
 		t.Errorf("expected 142, got %s", r.String())
@@ -46,15 +46,11 @@ func TestNoException(t *testing.T) {
 }
 
 func TestRaiseUnhandled(t *testing.T) {
-	// raise without handler should panic and be caught as error by evalHelper framework
-	defer func() {
-		r := recover()
-		if r == nil {
-			t.Error("expected panic from unhandled raise")
-		}
-	}()
-	e := setupEval()
-	_, _ = EvalString(`(raise "boom")`, e)
+	// raise without handler should return an error (not panic)
+	err := evalErr(t, `(raise "boom")`)
+	if err == nil {
+		t.Error("expected error from unhandled raise")
+	}
 }
 
 // =========================================================================
