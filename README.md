@@ -48,12 +48,12 @@ go install github.com/suchi/sucheme-go/cmd/sucheme@latest
 ### REPL 起動
 
 ```bash
-sucheme
+$ sucheme
 ```
 
+実行例:
+
 ```
-sucheme dev
-Type (exit) or Ctrl+D to quit.
 sucheme> (+ 1 2 3)
 6
 sucheme> (define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))

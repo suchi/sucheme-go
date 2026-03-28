@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/suchi/sucheme-go/pkg/env"
 	"github.com/suchi/sucheme-go/pkg/types"
@@ -53,6 +54,9 @@ func RegisterPortBuiltins(e *env.Env) {
 	}))
 
 	e.Define("open-output-string", types.NewProcedure("open-output-string", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 0 {
+			return nil, fmt.Errorf("expected no arguments")
+		}
 		port := NewOutputStringPort()
 		return makePortValue(port), nil
 	}))
@@ -76,12 +80,12 @@ func RegisterPortBuiltins(e *env.Env) {
 		if err != nil {
 			return nil, err
 		}
-		r, _, err := port.Reader.ReadRune()
-		if err == io.EOF {
+		r, _, readErr := port.Reader.ReadRune()
+		if readErr == io.EOF {
 			return types.Eof(), nil
 		}
-		if err != nil {
-			return nil, fmt.Errorf("read-char: %v", err)
+		if readErr != nil {
+			return nil, readErr
 		}
 		return types.NewChar(r), nil
 	}))
@@ -92,15 +96,22 @@ func RegisterPortBuiltins(e *env.Env) {
 			return nil, err
 		}
 		// Peek at least 1 byte
-		bytes, err := port.Reader.Peek(1)
+		bytes, peekErr := port.Reader.Peek(1)
 		if len(bytes) == 0 {
-			return types.Eof(), nil
+			if peekErr == io.EOF {
+				return types.Eof(), nil
+			}
+			return nil, peekErr
 		}
 		// Try to peek enough for a full rune
-		if bytes[0] >= 0x80 {
-			bytes, _ = port.Reader.Peek(4)
+		size := utf8.RuneLen(rune(bytes[0]))
+		if size < 0 {
+			size = 1
 		}
-		r, _ := decodeRune(bytes)
+		if size > 1 {
+			bytes, _ = port.Reader.Peek(size)
+		}
+		r, _ := utf8.DecodeRune(bytes)
 		return types.NewChar(r), nil
 	}))
 
@@ -109,15 +120,15 @@ func RegisterPortBuiltins(e *env.Env) {
 		if err != nil {
 			return nil, err
 		}
-		line, err := port.Reader.ReadString('\n')
-		if err == io.EOF {
+		line, readErr := port.Reader.ReadString('\n')
+		if readErr == io.EOF {
 			if line == "" {
 				return types.Eof(), nil
 			}
 			return types.NewString(line), nil
 		}
-		if err != nil {
-			return nil, fmt.Errorf("read-line: %v", err)
+		if readErr != nil {
+			return nil, readErr
 		}
 		// Remove trailing newline
 		if len(line) > 0 && line[len(line)-1] == '\n' {
@@ -131,44 +142,55 @@ func RegisterPortBuiltins(e *env.Env) {
 		if err != nil {
 			return nil, err
 		}
-		return types.NewBoolean(port.Reader.Buffered() > 0), nil
+		_, peekErr := port.Reader.Peek(1)
+		if peekErr == nil {
+			return types.True, nil
+		}
+		if peekErr == io.EOF {
+			return types.False, nil
+		}
+		return nil, fmt.Errorf("%v", peekErr)
 	}))
 
 	e.Define("write-char", types.NewProcedure("write-char", func(args []*types.Value) (*types.Value, error) {
-		if len(args) < 1 || args[0].Type != types.TypeCharacter {
-			return nil, fmt.Errorf("expected a character")
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected character and port")
 		}
-		if len(args) >= 2 {
-			port, err := getPort(args[1])
-			if err != nil {
-				return nil, err
-			}
-			if !port.IsOutput || port.Writer == nil {
-				return nil, fmt.Errorf("expected output port")
-			}
-			port.Writer.WriteRune(args[0].CharVal)
-		} else {
-			fmt.Print(string(args[0].CharVal))
+		if args[0].Type != types.TypeCharacter {
+			return nil, fmt.Errorf("expected a character, got %s", args[0].Type)
 		}
+		port, err := getPort(args[1])
+		if err != nil {
+			return nil, err
+		}
+		if !port.IsOutput || port.Writer == nil {
+			return nil, fmt.Errorf("expected output port")
+		}
+		if port.Closed {
+			return nil, fmt.Errorf("port is closed")
+		}
+		port.Writer.WriteRune(args[0].CharVal)
 		return types.Void(), nil
 	}))
 
 	e.Define("write-string", types.NewProcedure("write-string", func(args []*types.Value) (*types.Value, error) {
-		if len(args) < 1 || args[0].Type != types.TypeString {
-			return nil, fmt.Errorf("expected a string")
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected string and port")
 		}
-		if len(args) >= 2 {
-			port, err := getPort(args[1])
-			if err != nil {
-				return nil, err
-			}
-			if !port.IsOutput || port.Writer == nil {
-				return nil, fmt.Errorf("expected output port")
-			}
-			port.Writer.WriteString(args[0].StrVal)
-		} else {
-			fmt.Print(args[0].StrVal)
+		if args[0].Type != types.TypeString {
+			return nil, fmt.Errorf("expected a string, got %s", args[0].Type)
 		}
+		port, err := getPort(args[1])
+		if err != nil {
+			return nil, err
+		}
+		if !port.IsOutput || port.Writer == nil {
+			return nil, fmt.Errorf("expected output port")
+		}
+		if port.Closed {
+			return nil, fmt.Errorf("port is closed")
+		}
+		port.Writer.WriteString(args[0].StrVal)
 		return types.Void(), nil
 	}))
 
@@ -258,6 +280,9 @@ func RegisterPortBuiltins(e *env.Env) {
 	}))
 
 	e.Define("eof-object", types.NewProcedure("eof-object", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 0 {
+			return nil, fmt.Errorf("expected 0 arguments")
+		}
 		return types.Eof(), nil
 	}))
 
@@ -288,10 +313,10 @@ func getPort(v *types.Value) (*Port, error) {
 	return p, nil
 }
 
-// getInputPort extracts an input port from args (optional port argument).
+// getInputPort extracts an input port from args (exactly 1 port argument required).
 func getInputPort(args []*types.Value) (*Port, error) {
-	if len(args) == 0 {
-		return nil, fmt.Errorf("no port specified and current-input-port not yet implemented")
+	if len(args) != 1 {
+		return nil, fmt.Errorf("expected 1 argument (port)")
 	}
 	port, err := getPort(args[0])
 	if err != nil {
@@ -304,22 +329,4 @@ func getInputPort(args []*types.Value) (*Port, error) {
 		return nil, fmt.Errorf("port is closed")
 	}
 	return port, nil
-}
-
-// decodeRune decodes the first rune from a byte slice.
-func decodeRune(b []byte) (rune, int) {
-	if len(b) == 0 {
-		return 0, 0
-	}
-	// Simple UTF-8 decode
-	c := rune(b[0])
-	if c < 0x80 {
-		return c, 1
-	}
-	// Multi-byte: use string conversion
-	s := string(b)
-	for _, r := range s {
-		return r, len(string(r))
-	}
-	return 0, 0
 }

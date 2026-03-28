@@ -167,8 +167,6 @@ evaluator.RegisterExceptionBuiltins(e)
 evaluator.RegisterMapForEach(e)
 evaluator.RegisterParameterBuiltins(e)
 evaluator.RegisterPortBuiltins(e)
-evaluator.RegisterExceptionBuiltins(e)
-evaluator.RegisterMapForEach(e)
 ```
 
 ## AI ツール向けインストラクション

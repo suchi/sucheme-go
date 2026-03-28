@@ -43,7 +43,7 @@ func RegisterParameterBuiltins(e *env.Env) {
 			param.value = converted
 		}
 
-		// A parameter object is a procedure that returns its current value when called with 0 args
+		// A parameter object is a procedure: 0 args = get, 1 arg = set
 		proc := types.NewProcedure("parameter", func(callArgs []*types.Value) (*types.Value, error) {
 			if len(callArgs) == 0 {
 				// Look up in dynamic parameter stack first
@@ -54,7 +54,26 @@ func RegisterParameterBuiltins(e *env.Env) {
 				}
 				return param.value, nil
 			}
-			return nil, fmt.Errorf("parameter called with arguments; use parameterize to change")
+			if len(callArgs) == 1 {
+				val := callArgs[0]
+				if param.converter != nil {
+					var err error
+					val, err = param.converter(val)
+					if err != nil {
+						return nil, err
+					}
+				}
+				// Set in current dynamic frame if exists, else set base value
+				for i := len(parameterStack) - 1; i >= 0; i-- {
+					if _, ok := parameterStack[i][param]; ok {
+						parameterStack[i][param] = val
+						return types.Void(), nil
+					}
+				}
+				param.value = val
+				return types.Void(), nil
+			}
+			return nil, fmt.Errorf("expected 0 or 1 arguments")
 		})
 
 		// Store the Parameter pointer in the procedure for parameterize to find
@@ -93,7 +112,10 @@ func evalParameterize(expr *types.Value, e *env.Env) (*evalResult, error) {
 		if paramVal.Type != types.TypeProcedure || paramVal.ProcVal.ParamRef == nil {
 			return nil, fmt.Errorf("parameterize: expected parameter object")
 		}
-		param := paramVal.ProcVal.ParamRef.(*Parameter)
+		param, ok := paramVal.ProcVal.ParamRef.(*Parameter)
+		if !ok {
+			return nil, fmt.Errorf("parameterize: invalid parameter object")
+		}
 
 		// Evaluate the value expression
 		val, err := Eval(pair[1], e)
@@ -112,19 +134,20 @@ func evalParameterize(expr *types.Value, e *env.Env) (*evalResult, error) {
 		frame[param] = val
 	}
 
-	// Push frame, evaluate body, pop frame
+	// Push frame, evaluate body, ensure frame is popped even on panic
 	parameterStack = append(parameterStack, frame)
+	defer func() {
+		parameterStack = parameterStack[:len(parameterStack)-1]
+	}()
 
 	var result *types.Value
-	var evalErr error
 	for _, bodyExpr := range args[1:] {
+		var evalErr error
 		result, evalErr = Eval(bodyExpr, e)
 		if evalErr != nil {
-			parameterStack = parameterStack[:len(parameterStack)-1]
 			return nil, evalErr
 		}
 	}
 
-	parameterStack = parameterStack[:len(parameterStack)-1]
 	return resultVal(result), nil
 }
