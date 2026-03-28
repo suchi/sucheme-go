@@ -161,7 +161,7 @@ sucheme-go/
 | パッケージ | 役割 | 依存先 |
 |-----------|------|--------|
 | `pkg/types` | Scheme 値の型定義（`Value`, `Pair`, `Lambda`, `SyntaxRules` 等）。全パッケージの基盤 | なし |
-| `pkg/lexer` | ソースコードをトークン列に分割 | `types` |
+| `pkg/lexer` | ソースコードをトークン列に分割 | なし |
 | `pkg/parser` | トークン列を `Value` の AST に変換 | `types`, `lexer` |
 | `pkg/env` | 環境（スコープチェーン）。`Define`, `Set`, `Get`, `Extend` を提供 | `types` |
 | `pkg/evaluator` | 評価器コア。TCO トランポリン、特殊形式、マクロ展開、例外処理、ポートI/O、パラメータ | `types`, `env`, `parser` |
@@ -171,7 +171,7 @@ sucheme-go/
 
 ```mermaid
 graph LR
-    lexer --> types
+    lexer
     parser --> lexer
     parser --> types
     env --> types
