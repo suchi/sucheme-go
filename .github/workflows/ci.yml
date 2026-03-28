@@ -66,9 +66,29 @@ jobs:
             TOTAL_PCT=$(echo "$TOTAL_LINE" | awk '{print $3}')
             echo "### Total: ${TOTAL_PCT}" >> dashboard.md
             echo "" >> dashboard.md
-            echo "| File | Coverage |" >> dashboard.md
-            echo "|------|----------|" >> dashboard.md
-            go tool cover -func=coverage.out | grep -v "total:" | awk '{split($1,a,":"); file=a[1]} !seen[file]++ {print "| " file " | " $3 " |"}' >> dashboard.md
+            echo "| Package | Coverage |" >> dashboard.md
+            echo "|---------|----------|" >> dashboard.md
+            awk 'NR>1 {
+              split($1, a, ":");
+              file = a[1];
+              dir = file;
+              sub("/[^/]+$", "", dir);
+              numStmt = $2;
+              count = $3;
+              total[dir] += numStmt;
+              if (count > 0) {
+                covered[dir] += numStmt;
+              }
+            }
+            END {
+              for (d in total) {
+                pct = 0;
+                if (total[d] > 0) {
+                  pct = covered[d] * 100.0 / total[d];
+                }
+                printf "| %s | %.1f%% |\n", d, pct;
+              }
+            }' coverage.out | sort >> dashboard.md
           else
             echo "Coverage data not available (tests may have failed)." >> dashboard.md
           fi
