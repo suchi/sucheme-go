@@ -548,7 +548,7 @@ cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
 | ワークフロー | トリガー | 内容 |
 |-------------|---------|------|
 | `ci.yml` | push (`main`, `feature/*`, `claude/*`), PR to `main` | テスト（ubuntu/macos/windows, Go 1.24.7）、カバレッジ、ベンチマーク、WASM ビルド |
-| `pages.yml` | push (`main`), PR to `main` | WASM ビルド + GitHub Pages デプロイ |
+| `pages.yml` | push (`main`), PR to `main` | WASM ビルド + Pages 用アーティファクト作成（main のみデプロイ） |
 | `release.yml` | タグ push (`v*`) | マルチプラットフォームバイナリ (linux/darwin/windows, amd64/arm64) のビルドとリリース |
 
 CI ではテストが 3 つの OS で実行されるため、OS 固有のコードには注意してください。
