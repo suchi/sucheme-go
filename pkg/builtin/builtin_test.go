@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"math"
 	"testing"
 
 	"github.com/suchi/sucheme-go/pkg/env"
@@ -1055,5 +1056,543 @@ func TestValues(t *testing.T) {
 	r = call(t, e, "values", types.NewInteger(1), types.NewInteger(2))
 	if r.Type != types.TypeValues || len(r.ValuesVal) != 2 {
 		t.Error("multiple values failed")
+	}
+}
+
+// =========================================================================
+// PR #7 Review Remediation: Edge case tests
+// =========================================================================
+
+// --- abs: MinInt64 overflow ---
+func TestAbsMinInt64Overflow(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "abs", types.NewInteger(math.MinInt64))
+	if err == nil {
+		t.Error("expected overflow error for abs(MinInt64)")
+	}
+}
+
+func TestAbsZero(t *testing.T) {
+	e := setup()
+	r := call(t, e, "abs", types.NewInteger(0))
+	if r.IntVal != 0 {
+		t.Errorf("expected 0, got %d", r.IntVal)
+	}
+}
+
+func TestAbsPositive(t *testing.T) {
+	e := setup()
+	r := call(t, e, "abs", types.NewInteger(42))
+	if r.IntVal != 42 {
+		t.Errorf("expected 42, got %d", r.IntVal)
+	}
+}
+
+func TestAbsTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "abs", types.NewString("hello"))
+	if err == nil {
+		t.Error("expected type error for abs on string")
+	}
+}
+
+// --- round: additional edge cases ---
+func TestRoundInteger(t *testing.T) {
+	e := setup()
+	r := call(t, e, "round", types.NewInteger(5))
+	if r.Type != types.TypeInteger || r.IntVal != 5 {
+		t.Errorf("expected integer 5, got %s", r.String())
+	}
+}
+
+func TestRoundNegativeHalf(t *testing.T) {
+	e := setup()
+	r := call(t, e, "round", types.NewFloat(-0.5))
+	if r.FloatVal != 0.0 {
+		t.Errorf("expected 0.0 (even), got %f", r.FloatVal)
+	}
+}
+
+func TestRoundNeg2_5(t *testing.T) {
+	e := setup()
+	r := call(t, e, "round", types.NewFloat(-2.5))
+	if r.FloatVal != -2.0 {
+		t.Errorf("expected -2.0 (even), got %f", r.FloatVal)
+	}
+}
+
+func TestRoundTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "round", types.NewString("x"))
+	if err == nil {
+		t.Error("expected type error for round on string")
+	}
+}
+
+// --- expt: edge cases ---
+func TestExptNegativeExponent(t *testing.T) {
+	e := setup()
+	r := call(t, e, "expt", types.NewInteger(2), types.NewInteger(-1))
+	if r.Type != types.TypeFloat || r.FloatVal != 0.5 {
+		t.Errorf("expected 0.5 float, got %s", r.String())
+	}
+}
+
+func TestExptZeroBase(t *testing.T) {
+	e := setup()
+	r := call(t, e, "expt", types.NewInteger(0), types.NewInteger(0))
+	if r.IntVal != 1 {
+		t.Errorf("expected 1 for (expt 0 0), got %d", r.IntVal)
+	}
+}
+
+func TestExptFloatBase(t *testing.T) {
+	e := setup()
+	r := call(t, e, "expt", types.NewFloat(2.0), types.NewInteger(3))
+	if r.Type != types.TypeFloat || r.FloatVal != 8.0 {
+		t.Errorf("expected 8.0, got %s", r.String())
+	}
+}
+
+func TestExptTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "expt", types.NewString("a"), types.NewInteger(1))
+	if err == nil {
+		t.Error("expected type error for expt on string")
+	}
+}
+
+// --- inexact->exact: out of range ---
+func TestInexactExactOutOfRange(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "inexact->exact", types.NewFloat(1e19))
+	if err == nil {
+		t.Error("expected out of range error for very large float")
+	}
+}
+
+func TestInexactExactAlreadyExact(t *testing.T) {
+	e := setup()
+	r := call(t, e, "inexact->exact", types.NewInteger(42))
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected integer 42, got %s", r.String())
+	}
+}
+
+func TestInexactExactNegativeZero(t *testing.T) {
+	e := setup()
+	r := call(t, e, "inexact->exact", types.NewFloat(0.0))
+	if r.Type != types.TypeInteger || r.IntVal != 0 {
+		t.Errorf("expected 0, got %s", r.String())
+	}
+}
+
+// --- boolean=?: edge cases ---
+func TestBooleanEqTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "boolean=?", types.True, types.NewInteger(1))
+	if err == nil {
+		t.Error("expected type error for boolean=? with non-boolean")
+	}
+}
+
+func TestBooleanEqSingleArg(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "boolean=?", types.True)
+	if err == nil {
+		t.Error("expected error for boolean=? with single argument")
+	}
+}
+
+func TestBooleanEqMultiple(t *testing.T) {
+	e := setup()
+	r := call(t, e, "boolean=?", types.False, types.False, types.False)
+	if !r.BoolVal {
+		t.Error("expected #t for (boolean=? #f #f #f)")
+	}
+	r = call(t, e, "boolean=?", types.True, types.True, types.False)
+	if r.BoolVal {
+		t.Error("expected #f for (boolean=? #t #t #f)")
+	}
+}
+
+// --- eqv?: additional cases ---
+func TestEqvDifferentTypes(t *testing.T) {
+	e := setup()
+	r := call(t, e, "eqv?", types.NewInteger(1), types.NewString("1"))
+	if r.BoolVal {
+		t.Error("expected #f for eqv? of different types")
+	}
+}
+
+func TestEqvBooleans(t *testing.T) {
+	e := setup()
+	r := call(t, e, "eqv?", types.True, types.True)
+	if !r.BoolVal {
+		t.Error("expected #t for (eqv? #t #t)")
+	}
+	r = call(t, e, "eqv?", types.True, types.False)
+	if r.BoolVal {
+		t.Error("expected #f for (eqv? #t #f)")
+	}
+}
+
+func TestEqvChars(t *testing.T) {
+	e := setup()
+	r := call(t, e, "eqv?", types.NewChar('a'), types.NewChar('a'))
+	if !r.BoolVal {
+		t.Error("expected #t for (eqv? #\\a #\\a)")
+	}
+	r = call(t, e, "eqv?", types.NewChar('a'), types.NewChar('b'))
+	if r.BoolVal {
+		t.Error("expected #f for (eqv? #\\a #\\b)")
+	}
+}
+
+func TestEqvArgCount(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "eqv?", types.NewInteger(1))
+	if err == nil {
+		t.Error("expected error for eqv? with 1 argument")
+	}
+}
+
+// --- assq: tests ---
+func TestAssq(t *testing.T) {
+	e := setup()
+	sym := types.NewSymbol("b")
+	alist := types.FromList([]*types.Value{
+		types.Cons(types.NewSymbol("a"), types.NewInteger(1)),
+		types.Cons(sym, types.NewInteger(2)),
+		types.Cons(types.NewSymbol("c"), types.NewInteger(3)),
+	})
+	r := call(t, e, "assq", sym, alist)
+	if r.Type != types.TypePair || r.PairVal.Cdr.IntVal != 2 {
+		t.Errorf("expected (b . 2), got %s", r.String())
+	}
+}
+
+func TestAssqNotFound(t *testing.T) {
+	e := setup()
+	alist := types.FromList([]*types.Value{
+		types.Cons(types.NewSymbol("a"), types.NewInteger(1)),
+	})
+	r := call(t, e, "assq", types.NewSymbol("z"), alist)
+	if r.Type != types.TypeBoolean || r.BoolVal {
+		t.Error("expected #f for missing key in assq")
+	}
+}
+
+func TestAssqNonList(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "assq", types.NewSymbol("a"), types.NewInteger(42))
+	if err == nil {
+		t.Error("expected error for assq on non-list")
+	}
+}
+
+// --- assv: additional tests ---
+func TestAssvNotFound(t *testing.T) {
+	e := setup()
+	alist := types.FromList([]*types.Value{
+		types.Cons(types.NewInteger(1), types.NewString("one")),
+	})
+	r := call(t, e, "assv", types.NewInteger(99), alist)
+	if r.Type != types.TypeBoolean || r.BoolVal {
+		t.Error("expected #f for missing key in assv")
+	}
+}
+
+// --- memq: tests ---
+func TestMemq(t *testing.T) {
+	e := setup()
+	sym := types.NewSymbol("b")
+	lst := types.FromList([]*types.Value{types.NewSymbol("a"), sym, types.NewSymbol("c")})
+	r := call(t, e, "memq", sym, lst)
+	if r.Type != types.TypePair || r.PairVal.Car.SymbolVal != "b" {
+		t.Errorf("expected list starting with b, got %s", r.String())
+	}
+}
+
+func TestMemqNotFound(t *testing.T) {
+	e := setup()
+	lst := types.FromList([]*types.Value{types.NewInteger(1), types.NewInteger(2)})
+	r := call(t, e, "memq", types.NewInteger(9), lst)
+	if r.Type != types.TypeBoolean || r.BoolVal {
+		t.Error("expected #f for missing element in memq")
+	}
+}
+
+func TestMemqEmptyList(t *testing.T) {
+	e := setup()
+	r := call(t, e, "memq", types.NewInteger(1), types.Nil())
+	if r.Type != types.TypeBoolean || r.BoolVal {
+		t.Error("expected #f for memq on empty list")
+	}
+}
+
+// --- member/memv/memq: improper list error ---
+func TestMemberImproperList(t *testing.T) {
+	e := setup()
+	// (1 . 2) is an improper list
+	improper := types.Cons(types.NewInteger(1), types.NewInteger(2))
+	err := callErr(t, e, "member", types.NewInteger(9), improper)
+	if err == nil {
+		t.Error("expected error for member on improper list")
+	}
+}
+
+func TestMemvImproperList(t *testing.T) {
+	e := setup()
+	improper := types.Cons(types.NewInteger(1), types.NewInteger(2))
+	err := callErr(t, e, "memv", types.NewInteger(9), improper)
+	if err == nil {
+		t.Error("expected error for memv on improper list")
+	}
+}
+
+func TestMemqImproperList(t *testing.T) {
+	e := setup()
+	improper := types.Cons(types.NewInteger(1), types.NewInteger(2))
+	err := callErr(t, e, "memq", types.NewInteger(9), improper)
+	if err == nil {
+		t.Error("expected error for memq on improper list")
+	}
+}
+
+// --- member/memv on empty list ---
+func TestMemberEmptyList(t *testing.T) {
+	e := setup()
+	r := call(t, e, "member", types.NewInteger(1), types.Nil())
+	if r.Type != types.TypeBoolean || r.BoolVal {
+		t.Error("expected #f for member on empty list")
+	}
+}
+
+func TestMemvEmptyList(t *testing.T) {
+	e := setup()
+	r := call(t, e, "memv", types.NewInteger(1), types.Nil())
+	if r.Type != types.TypeBoolean || r.BoolVal {
+		t.Error("expected #f for memv on empty list")
+	}
+}
+
+// --- member/memv/memq: non-list argument ---
+func TestMemberNonList(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "member", types.NewInteger(1), types.NewInteger(42))
+	if err == nil {
+		t.Error("expected error for member on non-list")
+	}
+}
+
+func TestMemvNonList(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "memv", types.NewInteger(1), types.NewString("hello"))
+	if err == nil {
+		t.Error("expected error for memv on non-list")
+	}
+}
+
+func TestMemqNonList(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "memq", types.NewInteger(1), types.NewString("hello"))
+	if err == nil {
+		t.Error("expected error for memq on non-list")
+	}
+}
+
+// --- quotient: additional edge cases ---
+func TestQuotientNegativeDivisor(t *testing.T) {
+	e := setup()
+	r := call(t, e, "quotient", types.NewInteger(10), types.NewInteger(-3))
+	if r.IntVal != -3 {
+		t.Errorf("expected -3, got %d", r.IntVal)
+	}
+}
+
+func TestQuotientTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "quotient", types.NewFloat(10.0), types.NewInteger(3))
+	if err == nil {
+		t.Error("expected type error for quotient with float")
+	}
+}
+
+// --- remainder: additional edge cases ---
+func TestRemainderNegative(t *testing.T) {
+	e := setup()
+	// Go remainder: sign follows dividend
+	r := call(t, e, "remainder", types.NewInteger(-10), types.NewInteger(3))
+	if r.IntVal != -1 {
+		t.Errorf("expected -1 for (remainder -10 3), got %d", r.IntVal)
+	}
+}
+
+// --- floor/ceiling/truncate: type errors ---
+func TestFloorTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "floor", types.NewString("x"))
+	if err == nil {
+		t.Error("expected type error for floor on string")
+	}
+}
+
+func TestCeilingTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "ceiling", types.NewString("x"))
+	if err == nil {
+		t.Error("expected type error for ceiling on string")
+	}
+}
+
+func TestTruncateTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "truncate", types.NewString("x"))
+	if err == nil {
+		t.Error("expected type error for truncate on string")
+	}
+}
+
+// --- floor/ceiling/truncate: integer passthrough ---
+func TestFloorInteger(t *testing.T) {
+	e := setup()
+	r := call(t, e, "floor", types.NewInteger(5))
+	if r.Type != types.TypeInteger || r.IntVal != 5 {
+		t.Errorf("expected integer 5, got %s", r.String())
+	}
+}
+
+func TestCeilingInteger(t *testing.T) {
+	e := setup()
+	r := call(t, e, "ceiling", types.NewInteger(5))
+	if r.Type != types.TypeInteger || r.IntVal != 5 {
+		t.Errorf("expected integer 5, got %s", r.String())
+	}
+}
+
+func TestTruncateInteger(t *testing.T) {
+	e := setup()
+	r := call(t, e, "truncate", types.NewInteger(5))
+	if r.Type != types.TypeInteger || r.IntVal != 5 {
+		t.Errorf("expected integer 5, got %s", r.String())
+	}
+}
+
+// --- assoc/assv/assq: comparison table verification ---
+// assoc uses equal?, assv uses eqv?, assq uses eq?
+func TestAssocComparisonSemantics(t *testing.T) {
+	e := setup()
+	// assoc should find by structural equality (equal?)
+	alist := types.FromList([]*types.Value{
+		types.Cons(types.NewString("key"), types.NewInteger(1)),
+	})
+	r := call(t, e, "assoc", types.NewString("key"), alist)
+	if r.Type != types.TypePair {
+		t.Error("assoc should find string key by equal? (structural equality)")
+	}
+}
+
+func TestAssvComparisonSemantics(t *testing.T) {
+	e := setup()
+	// assv should find by eqv? (value equality for primitives)
+	alist := types.FromList([]*types.Value{
+		types.Cons(types.NewInteger(42), types.NewString("found")),
+	})
+	r := call(t, e, "assv", types.NewInteger(42), alist)
+	if r.Type != types.TypePair {
+		t.Error("assv should find integer key by eqv?")
+	}
+}
+
+func TestAssqComparisonSemantics(t *testing.T) {
+	e := setup()
+	// assq uses eq? (pointer equality) - different string objects should NOT match
+	alist := types.FromList([]*types.Value{
+		types.Cons(types.NewString("key"), types.NewInteger(1)),
+	})
+	r := call(t, e, "assq", types.NewString("key"), alist)
+	if r.Type == types.TypePair {
+		t.Error("assq should NOT find different string objects (eq? is pointer equality)")
+	}
+}
+
+// --- member/memv/memq: comparison table verification ---
+func TestMemberComparisonSemantics(t *testing.T) {
+	e := setup()
+	// member uses equal? - should find structurally equal strings
+	lst := types.FromList([]*types.Value{types.NewString("hello"), types.NewString("world")})
+	r := call(t, e, "member", types.NewString("hello"), lst)
+	if r.Type != types.TypePair {
+		t.Error("member should find by equal? (structural equality)")
+	}
+}
+
+func TestMemvComparisonSemantics(t *testing.T) {
+	e := setup()
+	// memv uses eqv? - should find by value equality for primitives
+	lst := types.FromList([]*types.Value{types.NewChar('a'), types.NewChar('b')})
+	r := call(t, e, "memv", types.NewChar('a'), lst)
+	if r.Type != types.TypePair {
+		t.Error("memv should find char by eqv?")
+	}
+}
+
+func TestMemqComparisonSemantics(t *testing.T) {
+	e := setup()
+	// memq uses eq? - different string objects should NOT match
+	lst := types.FromList([]*types.Value{types.NewString("hello")})
+	r := call(t, e, "memq", types.NewString("hello"), lst)
+	if r.Type == types.TypePair {
+		t.Error("memq should NOT find different string objects (eq? is pointer equality)")
+	}
+}
+
+// --- min/max: edge cases ---
+func TestMinSingle(t *testing.T) {
+	e := setup()
+	r := call(t, e, "min", types.NewInteger(42))
+	if r.IntVal != 42 {
+		t.Errorf("expected 42, got %d", r.IntVal)
+	}
+}
+
+func TestMaxSingle(t *testing.T) {
+	e := setup()
+	r := call(t, e, "max", types.NewInteger(42))
+	if r.IntVal != 42 {
+		t.Errorf("expected 42, got %d", r.IntVal)
+	}
+}
+
+func TestMinNoArgs(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "min")
+	if err == nil {
+		t.Error("expected error for min with no arguments")
+	}
+}
+
+func TestMaxNoArgs(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "max")
+	if err == nil {
+		t.Error("expected error for max with no arguments")
+	}
+}
+
+func TestMinMixedTypes(t *testing.T) {
+	e := setup()
+	r := call(t, e, "min", types.NewFloat(1.5), types.NewInteger(2))
+	if r.Type != types.TypeFloat || r.FloatVal != 1.5 {
+		t.Errorf("expected 1.5, got %s", r.String())
+	}
+}
+
+func TestMaxMixedTypes(t *testing.T) {
+	e := setup()
+	r := call(t, e, "max", types.NewFloat(1.5), types.NewInteger(2))
+	if r.Type != types.TypeInteger || r.IntVal != 2 {
+		t.Errorf("expected 2, got %s", r.String())
 	}
 }
