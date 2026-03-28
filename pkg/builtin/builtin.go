@@ -199,6 +199,269 @@ func registerArithmetic(e *env.Env) {
 		}
 		return types.NewInteger(result), nil
 	}))
+
+	e.Define("quotient", types.NewProcedure("quotient", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 || args[0].Type != types.TypeInteger || args[1].Type != types.TypeInteger {
+			return nil, fmt.Errorf("expected 2 integers")
+		}
+		if args[1].IntVal == 0 {
+			return nil, fmt.Errorf("division by zero")
+		}
+		return types.NewInteger(args[0].IntVal / args[1].IntVal), nil
+	}))
+
+	e.Define("remainder", types.NewProcedure("remainder", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 || args[0].Type != types.TypeInteger || args[1].Type != types.TypeInteger {
+			return nil, fmt.Errorf("expected 2 integers")
+		}
+		if args[1].IntVal == 0 {
+			return nil, fmt.Errorf("division by zero")
+		}
+		return types.NewInteger(args[0].IntVal % args[1].IntVal), nil
+	}))
+
+	e.Define("abs", types.NewProcedure("abs", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		switch args[0].Type {
+		case types.TypeInteger:
+			v := args[0].IntVal
+			if v == math.MinInt64 {
+				return nil, fmt.Errorf("integer overflow: abs of minimum int64")
+			}
+			if v < 0 {
+				v = -v
+			}
+			return types.NewInteger(v), nil
+		case types.TypeFloat:
+			v := args[0].FloatVal
+			if v < 0 {
+				v = -v
+			}
+			return types.NewFloat(v), nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
+		}
+	}))
+
+	e.Define("min", types.NewProcedure("min", func(args []*types.Value) (*types.Value, error) {
+		if len(args) == 0 {
+			return nil, fmt.Errorf("expected at least 1 argument")
+		}
+		result := args[0]
+		for _, a := range args[1:] {
+			lt, err := numLt(a, result)
+			if err != nil {
+				return nil, err
+			}
+			if lt {
+				result = a
+			}
+		}
+		return result, nil
+	}))
+
+	e.Define("max", types.NewProcedure("max", func(args []*types.Value) (*types.Value, error) {
+		if len(args) == 0 {
+			return nil, fmt.Errorf("expected at least 1 argument")
+		}
+		result := args[0]
+		for _, a := range args[1:] {
+			lt, err := numLt(result, a)
+			if err != nil {
+				return nil, err
+			}
+			if lt {
+				result = a
+			}
+		}
+		return result, nil
+	}))
+
+	e.Define("floor", types.NewProcedure("floor", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		switch args[0].Type {
+		case types.TypeInteger:
+			return args[0], nil
+		case types.TypeFloat:
+			return types.NewFloat(math.Floor(args[0].FloatVal)), nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
+		}
+	}))
+
+	e.Define("ceiling", types.NewProcedure("ceiling", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		switch args[0].Type {
+		case types.TypeInteger:
+			return args[0], nil
+		case types.TypeFloat:
+			return types.NewFloat(math.Ceil(args[0].FloatVal)), nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
+		}
+	}))
+
+	e.Define("truncate", types.NewProcedure("truncate", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		switch args[0].Type {
+		case types.TypeInteger:
+			return args[0], nil
+		case types.TypeFloat:
+			return types.NewFloat(math.Trunc(args[0].FloatVal)), nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
+		}
+	}))
+
+	e.Define("round", types.NewProcedure("round", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		switch args[0].Type {
+		case types.TypeInteger:
+			return args[0], nil
+		case types.TypeFloat:
+			return types.NewFloat(math.RoundToEven(args[0].FloatVal)), nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
+		}
+	}))
+
+	e.Define("expt", types.NewProcedure("expt", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		// Integer exponentiation via repeated squaring
+		if args[0].Type == types.TypeInteger && args[1].Type == types.TypeInteger && args[1].IntVal >= 0 {
+			base := args[0].IntVal
+			exp := args[1].IntVal
+			result := int64(1)
+			for exp > 0 {
+				if exp%2 == 1 {
+					result *= base
+				}
+				base *= base
+				exp /= 2
+			}
+			return types.NewInteger(result), nil
+		}
+		base, berr := toFloat(args[0])
+		if berr != nil {
+			return nil, berr
+		}
+		exp, eerr := toFloat(args[1])
+		if eerr != nil {
+			return nil, eerr
+		}
+		return types.NewFloat(math.Pow(base, exp)), nil
+	}))
+
+	e.Define("sqrt", types.NewProcedure("sqrt", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		f, err := toFloat(args[0])
+		if err != nil {
+			return nil, err
+		}
+		if f < 0 {
+			return nil, fmt.Errorf("sqrt of negative number: %g", f)
+		}
+		return types.NewFloat(math.Sqrt(f)), nil
+	}))
+
+	e.Define("exact->inexact", types.NewProcedure("exact->inexact", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		switch args[0].Type {
+		case types.TypeInteger:
+			return types.NewFloat(float64(args[0].IntVal)), nil
+		case types.TypeFloat:
+			return args[0], nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
+		}
+	}))
+
+	e.Define("inexact->exact", types.NewProcedure("inexact->exact", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		switch args[0].Type {
+		case types.TypeFloat:
+			f := args[0].FloatVal
+			if f != math.Trunc(f) {
+				return nil, fmt.Errorf("cannot convert non-integer float to exact: %g", f)
+			}
+			if f > float64(math.MaxInt64) || f < float64(math.MinInt64) {
+				return nil, fmt.Errorf("float value out of int64 range")
+			}
+			return types.NewInteger(int64(f)), nil
+		case types.TypeInteger:
+			return args[0], nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
+		}
+	}))
+
+	e.Define("zero?", types.NewProcedure("zero?", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		switch args[0].Type {
+		case types.TypeInteger:
+			return types.NewBoolean(args[0].IntVal == 0), nil
+		case types.TypeFloat:
+			return types.NewBoolean(args[0].FloatVal == 0), nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
+		}
+	}))
+
+	e.Define("positive?", types.NewProcedure("positive?", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		f, err := toFloat(args[0])
+		if err != nil {
+			return nil, err
+		}
+		return types.NewBoolean(f > 0), nil
+	}))
+
+	e.Define("negative?", types.NewProcedure("negative?", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 {
+			return nil, fmt.Errorf("expected 1 argument")
+		}
+		f, err := toFloat(args[0])
+		if err != nil {
+			return nil, err
+		}
+		return types.NewBoolean(f < 0), nil
+	}))
+
+	e.Define("odd?", types.NewProcedure("odd?", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 || args[0].Type != types.TypeInteger {
+			return nil, fmt.Errorf("expected integer, got %s", args[0].Type)
+		}
+		return types.NewBoolean(args[0].IntVal%2 != 0), nil
+	}))
+
+	e.Define("even?", types.NewProcedure("even?", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 1 || args[0].Type != types.TypeInteger {
+			return nil, fmt.Errorf("expected integer, got %s", args[0].Type)
+		}
+		return types.NewBoolean(args[0].IntVal%2 == 0), nil
+	}))
 }
 
 func registerComparison(e *env.Env) {
@@ -301,6 +564,150 @@ func registerComparison(e *env.Env) {
 			return nil, fmt.Errorf("expected 2 arguments")
 		}
 		return types.NewBoolean(args[0].Equal(args[1])), nil
+	}))
+
+	e.Define("eqv?", types.NewProcedure("eqv?", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		return types.NewBoolean(args[0].Eqv(args[1])), nil
+	}))
+
+	e.Define("boolean=?", types.NewProcedure("boolean=?", func(args []*types.Value) (*types.Value, error) {
+		if len(args) < 2 {
+			return nil, fmt.Errorf("expected at least 2 arguments")
+		}
+		for _, a := range args {
+			if a.Type != types.TypeBoolean {
+				return nil, fmt.Errorf("expected boolean, got %s", a.Type)
+			}
+		}
+		for i := 1; i < len(args); i++ {
+			if args[i].BoolVal != args[0].BoolVal {
+				return types.False, nil
+			}
+		}
+		return types.True, nil
+	}))
+
+	e.Define("assoc", types.NewProcedure("assoc", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		key := args[0]
+		lst, err := args[1].ToList()
+		if err != nil {
+			return nil, fmt.Errorf("expected list")
+		}
+		for _, pair := range lst {
+			if pair.Type != types.TypePair {
+				return nil, fmt.Errorf("expected list of pairs")
+			}
+			if key.Equal(pair.PairVal.Car) {
+				return pair, nil
+			}
+		}
+		return types.False, nil
+	}))
+
+	e.Define("assv", types.NewProcedure("assv", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		key := args[0]
+		lst, err := args[1].ToList()
+		if err != nil {
+			return nil, fmt.Errorf("expected list")
+		}
+		for _, pair := range lst {
+			if pair.Type != types.TypePair {
+				return nil, fmt.Errorf("expected list of pairs")
+			}
+			if key.Eqv(pair.PairVal.Car) {
+				return pair, nil
+			}
+		}
+		return types.False, nil
+	}))
+
+	e.Define("assq", types.NewProcedure("assq", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		key := args[0]
+		lst, err := args[1].ToList()
+		if err != nil {
+			return nil, fmt.Errorf("expected list")
+		}
+		for _, pair := range lst {
+			if pair.Type != types.TypePair {
+				return nil, fmt.Errorf("expected list of pairs")
+			}
+			if key.Eq(pair.PairVal.Car) {
+				return pair, nil
+			}
+		}
+		return types.False, nil
+	}))
+
+	e.Define("member", types.NewProcedure("member", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		if args[1].Type != types.TypePair && args[1].Type != types.TypeNil {
+			return nil, fmt.Errorf("expected list")
+		}
+		cur := args[1]
+		for cur.Type == types.TypePair {
+			if args[0].Equal(cur.PairVal.Car) {
+				return cur, nil
+			}
+			cur = cur.PairVal.Cdr
+		}
+		if cur.Type != types.TypeNil {
+			return nil, fmt.Errorf("expected proper list")
+		}
+		return types.False, nil
+	}))
+
+	e.Define("memv", types.NewProcedure("memv", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		if args[1].Type != types.TypePair && args[1].Type != types.TypeNil {
+			return nil, fmt.Errorf("expected list")
+		}
+		cur := args[1]
+		for cur.Type == types.TypePair {
+			if args[0].Eqv(cur.PairVal.Car) {
+				return cur, nil
+			}
+			cur = cur.PairVal.Cdr
+		}
+		if cur.Type != types.TypeNil {
+			return nil, fmt.Errorf("expected proper list")
+		}
+		return types.False, nil
+	}))
+
+	e.Define("memq", types.NewProcedure("memq", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		if args[1].Type != types.TypePair && args[1].Type != types.TypeNil {
+			return nil, fmt.Errorf("expected list")
+		}
+		cur := args[1]
+		for cur.Type == types.TypePair {
+			if args[0].Eq(cur.PairVal.Car) {
+				return cur, nil
+			}
+			cur = cur.PairVal.Cdr
+		}
+		if cur.Type != types.TypeNil {
+			return nil, fmt.Errorf("expected proper list")
+		}
+		return types.False, nil
 	}))
 }
 

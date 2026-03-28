@@ -154,6 +154,247 @@ func TestModulo(t *testing.T) {
 	}
 }
 
+func TestQuotient(t *testing.T) {
+	e := setup()
+	r := call(t, e, "quotient", types.NewInteger(10), types.NewInteger(3))
+	if r.IntVal != 3 {
+		t.Errorf("expected 3, got %d", r.IntVal)
+	}
+	r = call(t, e, "quotient", types.NewInteger(-10), types.NewInteger(3))
+	if r.IntVal != -3 {
+		t.Errorf("expected -3, got %d", r.IntVal)
+	}
+}
+
+func TestQuotientByZero(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "quotient", types.NewInteger(1), types.NewInteger(0))
+	if err == nil {
+		t.Error("expected division by zero")
+	}
+}
+
+func TestRemainder(t *testing.T) {
+	e := setup()
+	r := call(t, e, "remainder", types.NewInteger(10), types.NewInteger(3))
+	if r.IntVal != 1 {
+		t.Errorf("expected 1, got %d", r.IntVal)
+	}
+}
+
+func TestAbs(t *testing.T) {
+	e := setup()
+	r := call(t, e, "abs", types.NewInteger(-42))
+	if r.IntVal != 42 {
+		t.Errorf("expected 42, got %d", r.IntVal)
+	}
+	r = call(t, e, "abs", types.NewFloat(-3.14))
+	if r.FloatVal != 3.14 {
+		t.Errorf("expected 3.14, got %f", r.FloatVal)
+	}
+}
+
+func TestMinMax(t *testing.T) {
+	e := setup()
+	r := call(t, e, "min", types.NewInteger(3), types.NewInteger(1), types.NewInteger(5))
+	if r.IntVal != 1 {
+		t.Errorf("expected 1, got %d", r.IntVal)
+	}
+	r = call(t, e, "max", types.NewInteger(3), types.NewInteger(1), types.NewInteger(5))
+	if r.IntVal != 5 {
+		t.Errorf("expected 5, got %d", r.IntVal)
+	}
+}
+
+func TestFloorCeilingRound(t *testing.T) {
+	e := setup()
+	r := call(t, e, "floor", types.NewFloat(3.7))
+	if r.FloatVal != 3.0 {
+		t.Errorf("expected 3.0, got %f", r.FloatVal)
+	}
+	r = call(t, e, "ceiling", types.NewFloat(3.2))
+	if r.FloatVal != 4.0 {
+		t.Errorf("expected 4.0, got %f", r.FloatVal)
+	}
+	// R7RS round: ties-to-even
+	r = call(t, e, "round", types.NewFloat(2.5))
+	if r.FloatVal != 2.0 {
+		t.Errorf("expected 2.0 (even), got %f", r.FloatVal)
+	}
+	r = call(t, e, "round", types.NewFloat(3.5))
+	if r.FloatVal != 4.0 {
+		t.Errorf("expected 4.0 (even), got %f", r.FloatVal)
+	}
+}
+
+func TestExpt(t *testing.T) {
+	e := setup()
+	r := call(t, e, "expt", types.NewInteger(2), types.NewInteger(10))
+	if r.IntVal != 1024 {
+		t.Errorf("expected 1024, got %d", r.IntVal)
+	}
+}
+
+func TestSqrt(t *testing.T) {
+	e := setup()
+	r := call(t, e, "sqrt", types.NewFloat(4.0))
+	if r.FloatVal != 2.0 {
+		t.Errorf("expected 2.0, got %f", r.FloatVal)
+	}
+}
+
+func TestEqv(t *testing.T) {
+	e := setup()
+	r := call(t, e, "eqv?", types.NewInteger(1), types.NewInteger(1))
+	if !r.BoolVal {
+		t.Error("expected #t")
+	}
+}
+
+func TestBooleanEq(t *testing.T) {
+	e := setup()
+	r := call(t, e, "boolean=?", types.True, types.True)
+	if !r.BoolVal {
+		t.Error("expected #t")
+	}
+	r = call(t, e, "boolean=?", types.True, types.False)
+	if r.BoolVal {
+		t.Error("expected #f")
+	}
+}
+
+func TestAssoc(t *testing.T) {
+	e := setup()
+	alist := types.FromList([]*types.Value{
+		types.Cons(types.NewSymbol("a"), types.NewInteger(1)),
+		types.Cons(types.NewSymbol("b"), types.NewInteger(2)),
+	})
+	r := call(t, e, "assoc", types.NewSymbol("b"), alist)
+	if r.Type != types.TypePair || r.PairVal.Cdr.IntVal != 2 {
+		t.Errorf("expected (b . 2), got %s", r.String())
+	}
+	r = call(t, e, "assoc", types.NewSymbol("z"), alist)
+	if r.BoolVal != false || r.Type != types.TypeBoolean {
+		t.Error("expected #f for missing key")
+	}
+}
+
+func TestMember(t *testing.T) {
+	e := setup()
+	lst := types.FromList([]*types.Value{types.NewInteger(1), types.NewInteger(2), types.NewInteger(3)})
+	r := call(t, e, "member", types.NewInteger(2), lst)
+	if r.Type != types.TypePair || r.PairVal.Car.IntVal != 2 {
+		t.Errorf("expected (2 3), got %s", r.String())
+	}
+	r = call(t, e, "member", types.NewInteger(9), lst)
+	if r.Type != types.TypeBoolean {
+		t.Error("expected #f for missing member")
+	}
+}
+
+func TestTruncate(t *testing.T) {
+	e := setup()
+	r := call(t, e, "truncate", types.NewFloat(3.7))
+	if r.FloatVal != 3.0 {
+		t.Errorf("expected 3.0, got %f", r.FloatVal)
+	}
+	r = call(t, e, "truncate", types.NewFloat(-3.7))
+	if r.FloatVal != -3.0 {
+		t.Errorf("expected -3.0, got %f", r.FloatVal)
+	}
+}
+
+func TestExactInexact(t *testing.T) {
+	e := setup()
+	r := call(t, e, "exact->inexact", types.NewInteger(42))
+	if r.Type != types.TypeFloat || r.FloatVal != 42.0 {
+		t.Errorf("expected 42.0 float, got %s", r.String())
+	}
+	r = call(t, e, "inexact->exact", types.NewFloat(42.0))
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected 42 integer, got %s", r.String())
+	}
+}
+
+func TestInexactExactNonInteger(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "inexact->exact", types.NewFloat(3.5))
+	if err == nil {
+		t.Error("expected error for non-integer float")
+	}
+}
+
+func TestExactInexactTypeError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "exact->inexact", types.NewString("hello"))
+	if err == nil {
+		t.Error("expected error for non-number")
+	}
+}
+
+func TestZeroPositiveNegative(t *testing.T) {
+	e := setup()
+	tests := []struct {
+		fn   string
+		arg  *types.Value
+		want bool
+	}{
+		{"zero?", types.NewInteger(0), true},
+		{"zero?", types.NewInteger(1), false},
+		{"positive?", types.NewInteger(5), true},
+		{"positive?", types.NewInteger(-5), false},
+		{"negative?", types.NewInteger(-3), true},
+		{"negative?", types.NewInteger(3), false},
+		{"odd?", types.NewInteger(3), true},
+		{"odd?", types.NewInteger(4), false},
+		{"even?", types.NewInteger(4), true},
+		{"even?", types.NewInteger(3), false},
+	}
+	for _, tt := range tests {
+		r := call(t, e, tt.fn, tt.arg)
+		if r.BoolVal != tt.want {
+			t.Errorf("(%s %s) = %v, want %v", tt.fn, tt.arg.String(), r.BoolVal, tt.want)
+		}
+	}
+}
+
+func TestAssv(t *testing.T) {
+	e := setup()
+	alist := types.FromList([]*types.Value{
+		types.Cons(types.NewInteger(1), types.NewString("one")),
+		types.Cons(types.NewInteger(2), types.NewString("two")),
+	})
+	r := call(t, e, "assv", types.NewInteger(2), alist)
+	if r.Type != types.TypePair {
+		t.Errorf("expected pair, got %s", r.String())
+	}
+}
+
+func TestMemv(t *testing.T) {
+	e := setup()
+	lst := types.FromList([]*types.Value{types.NewInteger(1), types.NewInteger(2), types.NewInteger(3)})
+	r := call(t, e, "memv", types.NewInteger(2), lst)
+	if r.Type != types.TypePair || r.PairVal.Car.IntVal != 2 {
+		t.Errorf("expected (2 3), got %s", r.String())
+	}
+}
+
+func TestSqrtNegative(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "sqrt", types.NewFloat(-1.0))
+	if err == nil {
+		t.Error("expected error for sqrt of negative")
+	}
+}
+
+func TestRemainderByZero(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "remainder", types.NewInteger(5), types.NewInteger(0))
+	if err == nil {
+		t.Error("expected error for division by zero")
+	}
+}
+
 func TestModuloByZero(t *testing.T) {
 	e := setup()
 	err := callErr(t, e, "modulo", types.NewInteger(5), types.NewInteger(0))
