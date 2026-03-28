@@ -21,23 +21,29 @@ type Library struct {
 }
 
 // libraryRegistry stores all defined libraries.
-var libraryRegistry = make(map[string]*Library)
+// Reset on each RegisterLibraryBuiltins call.
+var libraryRegistry map[string]*Library
 
 // RegisterLibraryBuiltins registers the library system.
 func RegisterLibraryBuiltins(e *env.Env) {
-	// Register built-in libraries
-	registerSchemeBase()
+	// Reset library registry to avoid leaking old environments
+	libraryRegistry = make(map[string]*Library)
+
+	// Register built-in libraries for the given environment
+	registerSchemeBase(e)
 }
 
 // registerSchemeBase registers the (scheme base) library.
-func registerSchemeBase() {
+func registerSchemeBase(e *env.Env) {
 	lib := &Library{
 		Name:    "scheme base",
-		Env:     env.Global(),
+		Env:     e,
 		Exports: make(map[string]string),
 	}
-	// (scheme base) exports everything in the global environment
-	// We mark it as available; actual bindings come from the env
+	// (scheme base) exports everything in the given global environment
+	for _, key := range e.Keys() {
+		lib.Exports[key] = key
+	}
 	libraryRegistry["scheme base"] = lib
 }
 
@@ -83,7 +89,7 @@ func evalDefineLibrary(expr *types.Value, e *env.Env) (*evalResult, error) {
 					// (rename internal external)
 					rename, err := exp.ToList()
 					if err != nil || len(rename) != 3 {
-						return nil, fmt.Errorf("define-library: invalid export rename")
+						return nil, fmt.Errorf("define-library: invalid export spec")
 					}
 					if rename[0].Type != types.TypeSymbol || rename[0].SymbolVal != "rename" {
 						return nil, fmt.Errorf("define-library: expected rename in export")
@@ -92,6 +98,8 @@ func evalDefineLibrary(expr *types.Value, e *env.Env) (*evalResult, error) {
 						return nil, fmt.Errorf("define-library: rename requires two symbols")
 					}
 					lib.Exports[rename[2].SymbolVal] = rename[1].SymbolVal
+				} else {
+					return nil, fmt.Errorf("define-library: invalid export spec: expected symbol or (rename ...)")
 				}
 			}
 
@@ -117,6 +125,9 @@ func evalDefineLibrary(expr *types.Value, e *env.Env) (*evalResult, error) {
 					return nil, fmt.Errorf("define-library %s: %w", name, err)
 				}
 			}
+
+		default:
+			return nil, fmt.Errorf("define-library: unknown declaration: %s", head.SymbolVal)
 		}
 	}
 
@@ -171,9 +182,10 @@ func processImport(impSet *types.Value, target *env.Env) error {
 	// Import all exported bindings
 	for extName, intName := range lib.Exports {
 		val, found := lib.Env.Get(intName)
-		if found {
-			target.Define(extName, val)
+		if !found {
+			return fmt.Errorf("import: library %s exports undefined identifier: %s", name, intName)
 		}
+		target.Define(extName, val)
 	}
 
 	return nil

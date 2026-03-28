@@ -185,3 +185,41 @@ func TestDefineLibraryInvalid(t *testing.T) {
 		t.Error("expected error for empty define-library")
 	}
 }
+
+func TestImportSchemeBase(t *testing.T) {
+	e := setupEval()
+	// (scheme base) should provide standard bindings like +
+	result, err := EvalString(`
+		(import (scheme base))
+		(+ 1 2)
+	`, e)
+	if err != nil {
+		t.Fatalf("import (scheme base) failed: %v", err)
+	}
+	if result.IntVal != 3 {
+		t.Errorf("expected 3, got %s", result.String())
+	}
+}
+
+func TestDefineLibraryUnknownDeclaration(t *testing.T) {
+	e := setupEval()
+	_, err := EvalString(`
+		(define-library (test bad)
+			(unknown-decl 1 2 3))
+	`, e)
+	if err == nil {
+		t.Error("expected error for unknown declaration")
+	}
+}
+
+func TestDefineLibraryInvalidExportSpec(t *testing.T) {
+	e := setupEval()
+	_, err := EvalString(`
+		(define-library (test bad-export)
+			(export 42)
+			(begin (define x 1)))
+	`, e)
+	if err == nil {
+		t.Error("expected error for invalid export spec (number)")
+	}
+}

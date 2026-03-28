@@ -180,4 +180,4 @@ pie title R7RS 対応状況
 | `define-library` | 対応完了 | export (rename含む)、begin、import |
 | `import` | 対応完了 | only、except、prefix、rename |
 | `export` | 対応完了 | rename 対応 |
-| `(scheme base)` | 部分対応 | グローバル環境のバインディングを公開 |
+| `(scheme base)` | 対応完了 | 初期化時のグローバル環境の全バインディングを公開 |
