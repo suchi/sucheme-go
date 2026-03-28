@@ -12,6 +12,8 @@ func setupEval() *env.Env {
 	e := env.Global()
 	builtin.RegisterBuiltins(e)
 	RegisterApply(e)
+	RegisterExceptionBuiltins(e)
+	RegisterMapForEach(e)
 	return e
 }
 

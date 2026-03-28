@@ -119,6 +119,10 @@ func evalList(expr *types.Value, e *env.Env) (*evalResult, error) {
 			return evalLetrecSyntax(expr, e)
 		case "syntax-rules":
 			return nil, fmt.Errorf("syntax-rules can only appear inside define-syntax, let-syntax, or letrec-syntax")
+		case "guard":
+			return evalGuard(expr, e)
+		case "case-lambda":
+			return evalCaseLambda(expr, e)
 		}
 
 		// Check if head is a macro
@@ -1021,12 +1025,96 @@ func RegisterApply(e *env.Env) {
 	}))
 }
 
-func EvalString(input string, e *env.Env) (*types.Value, error) {
-	exprs, err := parser.ParseAllString(input)
-	if err != nil {
-		return nil, err
+// RegisterMapForEach registers map, for-each, and filter that work with both builtins and lambdas.
+func RegisterMapForEach(e *env.Env) {
+	e.Define("map", types.NewProcedure("map", func(args []*types.Value) (*types.Value, error) {
+		if len(args) < 2 {
+			return nil, fmt.Errorf("expected at least 2 arguments")
+		}
+		proc := args[0]
+		if proc.Type != types.TypeProcedure {
+			return nil, fmt.Errorf("expected a procedure")
+		}
+		lst, err := args[1].ToList()
+		if err != nil {
+			return nil, fmt.Errorf("expected a list")
+		}
+		results := make([]*types.Value, len(lst))
+		for i, el := range lst {
+			r, err := callProc(proc, []*types.Value{el})
+			if err != nil {
+				return nil, err
+			}
+			results[i] = r
+		}
+		return types.FromList(results), nil
+	}))
+
+	e.Define("for-each", types.NewProcedure("for-each", func(args []*types.Value) (*types.Value, error) {
+		if len(args) < 2 {
+			return nil, fmt.Errorf("expected at least 2 arguments")
+		}
+		proc := args[0]
+		if proc.Type != types.TypeProcedure {
+			return nil, fmt.Errorf("expected a procedure")
+		}
+		lst, err := args[1].ToList()
+		if err != nil {
+			return nil, fmt.Errorf("expected a list")
+		}
+		for _, el := range lst {
+			_, err := callProc(proc, []*types.Value{el})
+			if err != nil {
+				return nil, err
+			}
+		}
+		return types.Void(), nil
+	}))
+
+	e.Define("filter", types.NewProcedure("filter", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		proc := args[0]
+		if proc.Type != types.TypeProcedure {
+			return nil, fmt.Errorf("expected a procedure")
+		}
+		lst, err := args[1].ToList()
+		if err != nil {
+			return nil, fmt.Errorf("expected a list")
+		}
+		var results []*types.Value
+		for _, el := range lst {
+			r, err := callProc(proc, []*types.Value{el})
+			if err != nil {
+				return nil, err
+			}
+			if r.IsTrue() {
+				results = append(results, el)
+			}
+		}
+		return types.FromList(results), nil
+	}))
+}
+
+// EvalString parses and evaluates Scheme source code.
+// It catches unhandled SchemeExceptions and converts them to Go errors.
+func EvalString(input string, e *env.Env) (result *types.Value, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if exc, ok := r.(SchemeException); ok {
+				err = fmt.Errorf("unhandled exception: %s", exc.Value.Display())
+				result = nil
+				return
+			}
+			panic(r) // re-panic non-SchemeException
+		}
+	}()
+
+	exprs, parseErr := parser.ParseAllString(input)
+	if parseErr != nil {
+		return nil, parseErr
 	}
-	var result *types.Value
 	for _, expr := range exprs {
 		result, err = Eval(expr, e)
 		if err != nil {
