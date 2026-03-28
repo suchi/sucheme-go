@@ -59,6 +59,7 @@ func main() {
 	evaluator.RegisterMapForEach(e)
 	evaluator.RegisterParameterBuiltins(e)
 	evaluator.RegisterPortBuiltins(e)
+	evaluator.RegisterContinuationBuiltins(e)
 	registerDisplayWrite(e)
 
 	// Load -l files

@@ -53,7 +53,7 @@ pie title R7RS 対応状況
 | `include-ci` | 未対応 | |
 | `cond-expand` | 未対応 | |
 | `parameterize` | 対応完了 | `make-parameter` + 動的バインディングスタック |
-| `dynamic-wind` | 未対応 | |
+| `dynamic-wind` | 対応完了 | |
 
 ## 例外処理
 
@@ -169,9 +169,9 @@ pie title R7RS 対応状況
 
 | 機能 | 状態 | 備考 |
 |------|------|------|
-| `call-with-current-continuation` | 未対応 | CPS評価器で将来対応予定 |
-| `call-with-values` | 未対応 | |
-| `dynamic-wind` | 未対応 | |
+| `call-with-current-continuation` | 部分対応 | escape continuation のみ（panic/recover方式）。re-entrant 未対応 |
+| `call-with-values` | 対応完了 | |
+| `dynamic-wind` | 対応完了 | before/after サンク、escape 時も after 実行 |
 
 ## ライブラリシステム
 
