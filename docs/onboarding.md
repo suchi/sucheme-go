@@ -85,7 +85,10 @@ GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
 # Go ランタイムの wasm_exec.js をコピー
 cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
 
-# ブラウザで web-ui/index.html を開いて確認
+# ローカル HTTP サーバを起動して Web UI を確認
+cd web-ui
+python -m http.server 8000
+# ブラウザで http://localhost:8000/index.html を開いて確認
 ```
 
 Windows の場合、WASM ビルドは Git Bash や WSL 上で実行してください。
@@ -166,13 +169,13 @@ sucheme-go/
 
 依存関係の方向:
 
-```
-types <-- lexer <-- parser
-  ^                   |
-  |                   v
-  +---- env <---- evaluator
-  |                   ^
-  +-- builtin --------+  (builtin は evaluator に依存しない)
+```mermaid
+graph LR
+    types --- lexer --- parser
+    types --- env --- evaluator
+    types --- builtin
+    parser --> evaluator
+    builtin -.->|"依存しない"| evaluator
 ```
 
 **循環依存の回避**: `types` パッケージが `Env` インターフェースを定義し、`env` パッケージがそれを実装することで循環依存を防いでいます。また、`evaluator.Eval` を呼ぶ必要があるビルトイン関数（`apply`, `map`, `for-each` 等）は `pkg/builtin` ではなく `pkg/evaluator` に `Register*` 関数として配置されています。
@@ -238,8 +241,14 @@ type evalResult struct {
 
 func Eval(expr *types.Value, e *env.Env) (*types.Value, error) {
     result, err := evalTCO(expr, e)
+    if err != nil {
+        return nil, err
+    }
     for result.thunk != nil {
         result, err = evalTCO(result.thunk.expr, result.thunk.env)
+        if err != nil {
+            return nil, err
+        }
     }
     return result.value, nil
 }
@@ -265,6 +274,9 @@ func evalList(expr *types.Value, e *env.Env) (*evalResult, error) {
         // マクロチェック
         if val, ok := e.Get(head.SymbolVal); ok && val.Type == types.TypeSyntaxRules {
             expanded, err := expandMacro(val.SyntaxVal, expr)
+            if err != nil {
+                return nil, err
+            }
             return resultThunk(expanded, e), nil  // 展開結果を再評価
         }
     }
@@ -370,7 +382,7 @@ go test ./...                              # 全テスト実行
 go test ./... -v                           # 詳細出力
 go test -run TestAdd ./pkg/builtin/        # 特定テストを実行
 go test -coverprofile=coverage.out ./...   # カバレッジ付き
-go tool cover -html=coverage.out           # カバレッジレポートをブラウザで開く
+go tool cover -html=coverage.out -o coverage.html # カバレッジレポートを生成
 go test -bench=. -benchmem ./pkg/evaluator/ # ベンチマーク
 ```
 
