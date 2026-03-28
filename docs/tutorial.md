@@ -17,6 +17,9 @@ Sucheme で Scheme プログラミングを始めるためのステップバイ�
 11. [パラメータと動的束縛](#パラメータと動的束縛)
 12. [ライブラリシステム](#ライブラリシステム)
 13. [実践例: アルゴリズム](#実践例-アルゴリズム)
+14. [case-lambda（多重ディスパッチ）](#case-lambda多重ディスパッチ)
+15. [Web REPL](#web-repl)
+16. [次のステップ](#次のステップ)
 
 ---
 
@@ -264,9 +267,8 @@ sucheme> (quote (a b))  ; quote の明示的な使用
 (map (lambda (x) (* x x)) '(1 2 3 4 5))
 ; => (1 4 9 16 25)
 
-;; 複数リスト
-(map + '(1 2 3) '(10 20 30))
-; => (11 22 33)
+;; 注: R7RS では複数リストを渡す map もありますが、
+;; Sucheme の現在の実装では 1 リスト版のみ対応です。
 ```
 
 ### filter
@@ -298,7 +300,7 @@ sucheme> (quote (a b))  ; quote の明示的な使用
 ;; foldl: 左畳み込み
 (define (foldl f init lst)
   (if (null? lst) init
-      (foldl f (f (car lst) init) (cdr lst))))
+      (foldl f (f init (car lst)) (cdr lst))))
 
 (foldl + 0 '(1 2 3 4 5)) ; => 15
 ```
@@ -481,11 +483,19 @@ Sucheme はトランポリン方式の末尾呼び出し最適化 (TCO) を実�
 
 ### with-exception-handler
 
+`with-exception-handler` は引数を2つ（handler と thunk）だけ取ります。
+継続可能な再開には `raise-continuable` を使います。
+
 ```scheme
 (with-exception-handler
-  (lambda (exn) (display "caught!"))
-  (lambda () (raise "oops"))
-  'with-continuable)
+  (lambda (exn)
+    (display "caught: ")
+    (display exn)
+    (newline)
+    42)  ; handler の戻り値が raise-continuable の結果になる
+  (lambda ()
+    (raise-continuable "oops")))
+; => "caught: oops" と表示され、式全体の値は 42
 ```
 
 ---
@@ -527,6 +537,7 @@ R7RS の `define-library` でモジュールを定義できます。
 
 ```scheme
 (define-library (mylib math)
+  (import (scheme base))
   (export square cube)
   (begin
     (define (square x) (* x x))
