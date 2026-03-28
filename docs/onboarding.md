@@ -205,29 +205,24 @@ graph LR
 
 ### データフローと処理パイプライン
 
-```
-ソースコード (文字列)
-    |
-    v
-  Lexer (pkg/lexer)        トークン列に分割
-    |
-    v
-  Parser (pkg/parser)      トークン列 → Value (AST) に変換
-    |
-    v
-  Evaluator (pkg/evaluator)
-    |
-    +--- 自己評価式 (数値, 文字列, etc.) → そのまま返す
-    +--- シンボル → 環境 (pkg/env) から変数を探索
-    +--- 特殊形式 (if, define, lambda, etc.) → 専用の eval 関数で処理
-    +--- マクロ → syntax-rules で展開してから再評価
-    +--- 関数適用 → 引数を評価し、関数を呼び出す
-              |
-              +--- ビルトイン関数 (pkg/builtin) → Go の関数を直接呼び出し
-              +--- ユーザー定義関数 (Lambda) → 新しい環境でボディを評価
-    |
-    v
-  結果 (*types.Value)
+```mermaid
+flowchart TD
+    Source["ソースコード (文字列)"] --> Lexer["Lexer (pkg/lexer)<br/>トークン列に分割"]
+    Lexer --> Parser["Parser (pkg/parser)<br/>トークン列 → Value AST に変換"]
+    Parser --> Eval["Evaluator (pkg/evaluator)"]
+    Eval --> SelfEval["自己評価式<br/>数値, 文字列 等 → そのまま返す"]
+    Eval --> Symbol["シンボル → 環境 (pkg/env) から探索"]
+    Eval --> Special["特殊形式<br/>if, define, lambda 等 → 専用 eval 関数"]
+    Eval --> Macro["マクロ → syntax-rules で展開して再評価"]
+    Eval --> Apply["関数適用 → 引数を評価して呼び出し"]
+    Apply --> Builtin["ビルトイン関数 (pkg/builtin)<br/>Go 関数を直接呼び出し"]
+    Apply --> Lambda["ユーザー定義関数 (Lambda)<br/>新しい環境でボディを評価"]
+    SelfEval --> Result["結果 (*types.Value)"]
+    Symbol --> Result
+    Special --> Result
+    Macro --> Eval
+    Builtin --> Result
+    Lambda --> Result
 ```
 
 ### 末尾呼び出し最適化 (TCO)
