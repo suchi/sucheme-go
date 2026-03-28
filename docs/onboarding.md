@@ -468,6 +468,8 @@ func setupEval() *env.Env {
     RegisterMapForEach(e)
     RegisterParameterBuiltins(e)
     RegisterPortBuiltins(e)
+    RegisterContinuationBuiltins(e)
+    RegisterLibraryBuiltins(e)
     return e
 }
 
@@ -558,7 +560,7 @@ fi
 |-------------|---------|------|
 | `ci.yml` | push (`main`, `feature/*`, `claude/*`), PR to `main` | テスト（ubuntu/macos/windows, Go 1.24 系）、カバレッジ、ベンチマーク、WASM ビルド |
 | `pages.yml` | push (`main`), PR to `main` | WASM ビルド + Pages 用アーティファクト作成（main のみデプロイ） |
-| `release.yml` | タグ push (`v*`) | マルチプラットフォームバイナリ (linux/darwin/windows, amd64/arm64) のビルドとリリース |
+| `release.yml` | タグ push (`v*`) | マルチプラットフォームバイナリ (linux amd64/arm64, darwin amd64/arm64, windows amd64) のビルドとリリース |
 
 CI ではテストが 3 つの OS で実行されるため、OS 固有のコードには注意してください。
 
