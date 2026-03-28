@@ -21,8 +21,11 @@ type Library struct {
 }
 
 // libraryRegistry stores all defined libraries.
-// Reset on each RegisterLibraryBuiltins call.
-var libraryRegistry map[string]*Library
+// Initialized by RegisterLibraryBuiltins or lazily on first use.
+//
+// NOTE: This is a global variable, not thread-safe. Same caveat as other
+// global state in the evaluator (exceptionHandlerStack, parameterStack, etc.).
+var libraryRegistry = make(map[string]*Library)
 
 // RegisterLibraryBuiltins registers the library system.
 func RegisterLibraryBuiltins(e *env.Env) {
@@ -48,25 +51,30 @@ func registerSchemeBase(e *env.Env) {
 }
 
 // evalDefineLibrary implements (define-library <name> <declarations>...)
+// Declarations are collected first, then processed in order: export → import → begin.
+// This ensures imports are available before begin bodies execute.
 func evalDefineLibrary(expr *types.Value, e *env.Env) (*evalResult, error) {
 	args, err := listArgs(expr)
 	if err != nil || len(args) < 1 {
 		return nil, fmt.Errorf("define-library: invalid syntax")
 	}
 
-	// Parse library name: (scheme base) -> "scheme base"
 	name, err := parseLibraryName(args[0])
 	if err != nil {
 		return nil, err
 	}
 
+	// Library environment has nil parent to enforce explicit imports
 	lib := &Library{
 		Name:    name,
-		Env:     env.New(e),
+		Env:     env.New(nil),
 		Exports: make(map[string]string),
 	}
 
-	// Process declarations
+	// Collect declarations by type
+	var importDecls []*types.Value
+	var beginDecls []*types.Value
+
 	for _, decl := range args[1:] {
 		if decl.Type != types.TypePair {
 			return nil, fmt.Errorf("define-library: invalid declaration")
@@ -86,7 +94,6 @@ func evalDefineLibrary(expr *types.Value, e *env.Env) (*evalResult, error) {
 				if exp.Type == types.TypeSymbol {
 					lib.Exports[exp.SymbolVal] = exp.SymbolVal
 				} else if exp.Type == types.TypePair {
-					// (rename internal external)
 					rename, err := exp.ToList()
 					if err != nil || len(rename) != 3 {
 						return nil, fmt.Errorf("define-library: invalid export spec")
@@ -108,26 +115,31 @@ func evalDefineLibrary(expr *types.Value, e *env.Env) (*evalResult, error) {
 			if err != nil {
 				return nil, fmt.Errorf("define-library: invalid begin body")
 			}
-			for _, bodyExpr := range body {
-				_, err := Eval(bodyExpr, lib.Env)
-				if err != nil {
-					return nil, fmt.Errorf("define-library %s: %w", name, err)
-				}
-			}
+			beginDecls = append(beginDecls, body...)
 
 		case "import":
 			importSets, err := decl.PairVal.Cdr.ToList()
 			if err != nil {
 				return nil, fmt.Errorf("define-library: invalid import")
 			}
-			for _, impSet := range importSets {
-				if err := processImport(impSet, lib.Env); err != nil {
-					return nil, fmt.Errorf("define-library %s: %w", name, err)
-				}
-			}
+			importDecls = append(importDecls, importSets...)
 
 		default:
 			return nil, fmt.Errorf("define-library: unknown declaration: %s", head.SymbolVal)
+		}
+	}
+
+	// Process in order: imports first, then begin bodies
+	for _, impSet := range importDecls {
+		if err := processImport(impSet, lib.Env); err != nil {
+			return nil, fmt.Errorf("define-library %s: %w", name, err)
+		}
+	}
+
+	for _, bodyExpr := range beginDecls {
+		_, err := Eval(bodyExpr, lib.Env)
+		if err != nil {
+			return nil, fmt.Errorf("define-library %s: %w", name, err)
 		}
 	}
 
@@ -168,7 +180,6 @@ func processImport(impSet *types.Value, target *env.Env) error {
 		}
 	}
 
-	// Basic import: (import (scheme base))
 	name, err := parseLibraryName(impSet)
 	if err != nil {
 		return err
@@ -179,7 +190,6 @@ func processImport(impSet *types.Value, target *env.Env) error {
 		return fmt.Errorf("import: unknown library: %s", name)
 	}
 
-	// Import all exported bindings
 	for extName, intName := range lib.Exports {
 		val, found := lib.Env.Get(intName)
 		if !found {
@@ -198,7 +208,6 @@ func processImportOnly(impSet *types.Value, target *env.Env) error {
 		return fmt.Errorf("import only: invalid syntax")
 	}
 
-	// Create temp env with all imports, then copy only specified ones
 	temp := env.New(nil)
 	if err := processImport(args[0], temp); err != nil {
 		return err
@@ -224,7 +233,6 @@ func processImportExcept(impSet *types.Value, target *env.Env) error {
 		return fmt.Errorf("import except: invalid syntax")
 	}
 
-	// Build exclusion set
 	excluded := make(map[string]bool)
 	for _, id := range args[1:] {
 		if id.Type != types.TypeSymbol {
@@ -233,7 +241,6 @@ func processImportExcept(impSet *types.Value, target *env.Env) error {
 		excluded[id.SymbolVal] = true
 	}
 
-	// Import all except excluded
 	temp := env.New(nil)
 	if err := processImport(args[0], temp); err != nil {
 		return err
@@ -278,7 +285,6 @@ func processImportRename(impSet *types.Value, target *env.Env) error {
 		return fmt.Errorf("import rename: invalid syntax")
 	}
 
-	// Build rename map
 	renames := make(map[string]string)
 	for _, pair := range args[1:] {
 		rename, err := pair.ToList()
@@ -308,7 +314,6 @@ func processImportRename(impSet *types.Value, target *env.Env) error {
 }
 
 // parseLibraryName converts a library name form to a string.
-// (scheme base) -> "scheme base"
 func parseLibraryName(v *types.Value) (string, error) {
 	parts, err := v.ToList()
 	if err != nil {

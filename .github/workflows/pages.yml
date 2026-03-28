@@ -33,6 +33,7 @@ jobs:
           elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
             cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/dist/
           fi
+          if [ ! -f web-ui/dist/wasm_exec.js ]; then echo "wasm_exec.js not found" >&2; exit 1; fi
           cp web-ui/index.html web-ui/dist/
           cp web-ui/style.css web-ui/dist/
           cp web-ui/app.js web-ui/dist/
