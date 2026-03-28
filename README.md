@@ -143,7 +143,7 @@ sucheme-go/
 | ベクタ | `make-vector`, `vector-ref`, `vector-set!` 等 | 対応完了 |
 | バイトベクタ | `make-bytevector`, `bytevector-u8-ref` 等 | 対応完了 |
 | 等値 | `eq?`, `eqv?`, `equal?`, `boolean=?` | 対応完了 |
-| ポートI/O | `open-input-string`, `open-output-string`, `read-char`, `read-line`, `write-char` | 対応完了 |
+| ポートI/O | `open-input-string`, `open-output-string`, `read-char`, `read-line`, `write-char` | 部分対応 |
 | 継続 | `call/cc`, `dynamic-wind` | 未対応 |
 | 多値 | `values` (基本), `call-with-values` | 部分対応 |
 | ライブラリ | `define-library`, `import`, `export` | 未対応 |

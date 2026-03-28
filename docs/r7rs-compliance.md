@@ -155,9 +155,9 @@ pie title R7RS 対応状況
 |------|------|------|
 | `display`, `write`, `newline` | 対応完了 | CLI: stdout, WASM: キャプチャ |
 | `read` | 未対応 | |
-| `read-char`, `write-char`, `read-line` | 対応完了 | 文字列ポート経由 |
-| `peek-char`, `char-ready?` | 対応完了 | |
-| `write-string` | 対応完了 | |
+| `read-char`, `write-char`, `read-line` | 部分対応 | 文字列ポート経由。ポート引数必須（`current-*-port` 未実装） |
+| `peek-char`, `char-ready?` | 部分対応 | ポート引数必須（`current-input-port` 未実装） |
+| `write-string` | 部分対応 | ポート引数必須（`current-output-port` 未実装） |
 | `open-input-string`, `open-output-string` | 対応完了 | |
 | `get-output-string` | 対応完了 | |
 | `open-input-file`, `open-output-file` | 未対応 | WASM非対応 |

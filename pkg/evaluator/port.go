@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/suchi/sucheme-go/pkg/env"
 	"github.com/suchi/sucheme-go/pkg/types"
@@ -20,7 +19,7 @@ type Port struct {
 	Closed   bool
 	Reader   *bufio.Reader
 	Writer   *strings.Builder // for string output ports
-	Src      io.Reader        // underlying reader (for close)
+	Src      io.Reader        // underlying reader for string input ports (not closable)
 }
 
 // NewInputStringPort creates an input port reading from a string.
@@ -95,23 +94,17 @@ func RegisterPortBuiltins(e *env.Env) {
 		if err != nil {
 			return nil, err
 		}
-		// Peek at least 1 byte
-		bytes, peekErr := port.Reader.Peek(1)
-		if len(bytes) == 0 {
-			if peekErr == io.EOF {
-				return types.Eof(), nil
-			}
-			return nil, peekErr
+		// Read one rune then unread it to implement peek semantics safely for UTF-8
+		r, _, readErr := port.Reader.ReadRune()
+		if readErr == io.EOF {
+			return types.Eof(), nil
 		}
-		// Try to peek enough for a full rune
-		size := utf8.RuneLen(rune(bytes[0]))
-		if size < 0 {
-			size = 1
+		if readErr != nil {
+			return nil, readErr
 		}
-		if size > 1 {
-			bytes, _ = port.Reader.Peek(size)
+		if unreadErr := port.Reader.UnreadRune(); unreadErr != nil {
+			return nil, unreadErr
 		}
-		r, _ := utf8.DecodeRune(bytes)
 		return types.NewChar(r), nil
 	}))
 
@@ -149,7 +142,7 @@ func RegisterPortBuiltins(e *env.Env) {
 		if peekErr == io.EOF {
 			return types.False, nil
 		}
-		return nil, fmt.Errorf("%v", peekErr)
+		return nil, peekErr
 	}))
 
 	e.Define("write-char", types.NewProcedure("write-char", func(args []*types.Value) (*types.Value, error) {

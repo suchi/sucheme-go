@@ -225,3 +225,87 @@ func TestPeekChar(t *testing.T) {
 		t.Error("peek-char and read-char should return same char")
 	}
 }
+
+// =========================================================================
+// Port boundary tests
+// =========================================================================
+
+func TestReadCharMultibyte(t *testing.T) {
+	r := evalHelper(t, `
+		(define p (open-input-string "あいう"))
+		(list (read-char p) (read-char p) (read-char p))
+	`)
+	lst, _ := r.ToList()
+	if len(lst) != 3 || lst[0].CharVal != 'あ' || lst[1].CharVal != 'い' || lst[2].CharVal != 'う' {
+		t.Errorf("expected Japanese chars, got %s", r.String())
+	}
+}
+
+func TestPeekCharMultibyte(t *testing.T) {
+	r := evalHelper(t, `
+		(define p (open-input-string "日本"))
+		(define c1 (peek-char p))
+		(define c2 (read-char p))
+		(eqv? c1 c2)
+	`)
+	if !r.BoolVal {
+		t.Error("peek-char and read-char should match for multibyte chars")
+	}
+}
+
+func TestClosePortThenRead(t *testing.T) {
+	err := evalErr(t, `
+		(define p (open-input-string "abc"))
+		(close-port p)
+		(read-char p)
+	`)
+	if err == nil {
+		t.Error("expected error reading from closed port")
+	}
+}
+
+func TestClosePortThenWrite(t *testing.T) {
+	err := evalErr(t, `
+		(define p (open-output-string))
+		(close-port p)
+		(write-char #\a p)
+	`)
+	if err == nil {
+		t.Error("expected error writing to closed port")
+	}
+}
+
+func TestReadLineLong(t *testing.T) {
+	// 1000 character line
+	r := evalHelper(t, `
+		(define s (make-string 1000 #\x))
+		(define p (open-input-string s))
+		(string-length (read-line p))
+	`)
+	if r.IntVal != 1000 {
+		t.Errorf("expected 1000, got %d", r.IntVal)
+	}
+}
+
+func TestParameterSet(t *testing.T) {
+	// Test 1-arg parameter set (R7RS)
+	r := evalHelper(t, `
+		(define p (make-parameter 1))
+		(p 42)
+		(p)
+	`)
+	if r.IntVal != 42 {
+		t.Errorf("expected 42, got %s", r.String())
+	}
+}
+
+func TestParameterSetWithConverter(t *testing.T) {
+	r := evalHelper(t, `
+		(define p (make-parameter 0 (lambda (x) (* x 2))))
+		(p 5)
+		(p)
+	`)
+	if r.IntVal != 10 {
+		t.Errorf("expected 10, got %s", r.String())
+	}
+}

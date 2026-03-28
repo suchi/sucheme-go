@@ -16,6 +16,10 @@ type Parameter struct {
 
 // parameterStack tracks dynamic parameter bindings.
 // Each entry maps parameter identity to its current value.
+//
+// NOTE: This stack is not thread-safe. It assumes a single-threaded evaluator
+// and must not be shared across concurrent evaluators, similar to the
+// exception handler stack in exception.go.
 var parameterStack []map[*Parameter]*types.Value
 
 // RegisterParameterBuiltins registers make-parameter and related procedures.
