@@ -289,7 +289,7 @@ func registerArithmetic(e *env.Env) {
 		case types.TypeFloat:
 			return types.NewFloat(math.Floor(args[0].FloatVal)), nil
 		default:
-			return nil, fmt.Errorf("expected number")
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
 		}
 	}))
 
@@ -303,7 +303,7 @@ func registerArithmetic(e *env.Env) {
 		case types.TypeFloat:
 			return types.NewFloat(math.Ceil(args[0].FloatVal)), nil
 		default:
-			return nil, fmt.Errorf("expected number")
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
 		}
 	}))
 
@@ -317,7 +317,7 @@ func registerArithmetic(e *env.Env) {
 		case types.TypeFloat:
 			return types.NewFloat(math.Trunc(args[0].FloatVal)), nil
 		default:
-			return nil, fmt.Errorf("expected number")
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
 		}
 	}))
 
@@ -331,7 +331,7 @@ func registerArithmetic(e *env.Env) {
 		case types.TypeFloat:
 			return types.NewFloat(math.RoundToEven(args[0].FloatVal)), nil
 		default:
-			return nil, fmt.Errorf("expected number")
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
 		}
 	}))
 
@@ -423,7 +423,7 @@ func registerArithmetic(e *env.Env) {
 		case types.TypeFloat:
 			return types.NewBoolean(args[0].FloatVal == 0), nil
 		default:
-			return nil, fmt.Errorf("expected number")
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
 		}
 	}))
 
@@ -451,14 +451,14 @@ func registerArithmetic(e *env.Env) {
 
 	e.Define("odd?", types.NewProcedure("odd?", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 1 || args[0].Type != types.TypeInteger {
-			return nil, fmt.Errorf("expected integer")
+			return nil, fmt.Errorf("expected integer, got %s", args[0].Type)
 		}
 		return types.NewBoolean(args[0].IntVal%2 != 0), nil
 	}))
 
 	e.Define("even?", types.NewProcedure("even?", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 1 || args[0].Type != types.TypeInteger {
-			return nil, fmt.Errorf("expected integer")
+			return nil, fmt.Errorf("expected integer, got %s", args[0].Type)
 		}
 		return types.NewBoolean(args[0].IntVal%2 == 0), nil
 	}))
@@ -592,7 +592,7 @@ func registerComparison(e *env.Env) {
 
 	e.Define("assoc", types.NewProcedure("assoc", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 2 {
-			return nil, fmt.Errorf("expected 2 arguments (custom comparator not yet supported)")
+			return nil, fmt.Errorf("expected 2 arguments")
 		}
 		key := args[0]
 		lst, err := args[1].ToList()

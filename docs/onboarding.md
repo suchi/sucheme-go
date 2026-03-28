@@ -41,7 +41,7 @@ go build -o sucheme ./cmd/sucheme/
 ./sucheme
 
 # ファイル実行
-./sucheme examples/hello.scm
+./sucheme examples/basics/01-hello.scm
 
 # 式の評価
 ./sucheme -e '(+ 1 2 3)'
