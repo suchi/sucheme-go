@@ -118,7 +118,7 @@ func evalList(expr *types.Value, e *env.Env) (*evalResult, error) {
 		case "letrec-syntax":
 			return evalLetrecSyntax(expr, e)
 		case "syntax-rules":
-			return nil, fmt.Errorf("syntax-rules can only appear inside define-syntax or let-syntax")
+			return nil, fmt.Errorf("syntax-rules can only appear inside define-syntax, let-syntax, or letrec-syntax")
 		}
 
 		// Check if head is a macro
@@ -716,14 +716,18 @@ func evalLetrecSyntax(expr *types.Value, e *env.Env) (*evalResult, error) {
 }
 
 func evalLetSyntaxCommon(expr *types.Value, e *env.Env, isRec bool) (*evalResult, error) {
+	formName := "let-syntax"
+	if isRec {
+		formName = "letrec-syntax"
+	}
 	args, err := listArgs(expr)
 	if err != nil || len(args) < 2 {
-		return nil, fmt.Errorf("let-syntax requires bindings and body")
+		return nil, fmt.Errorf("%s requires bindings and body", formName)
 	}
 
 	bindings, err := args[0].ToList()
 	if err != nil {
-		return nil, fmt.Errorf("let-syntax: invalid bindings")
+		return nil, fmt.Errorf("%s: invalid bindings", formName)
 	}
 
 	child := env.New(e)
@@ -731,21 +735,21 @@ func evalLetSyntaxCommon(expr *types.Value, e *env.Env, isRec bool) (*evalResult
 	for _, b := range bindings {
 		pair, err := b.ToList()
 		if err != nil || len(pair) != 2 {
-			return nil, fmt.Errorf("let-syntax: invalid binding")
+			return nil, fmt.Errorf("%s: invalid binding", formName)
 		}
 		if pair[0].Type != types.TypeSymbol {
-			return nil, fmt.Errorf("let-syntax: binding name must be a symbol")
+			return nil, fmt.Errorf("%s: binding name must be a symbol", formName)
 		}
 		name := pair[0].SymbolVal
 
 		if pair[1].Type != types.TypePair || pair[1].PairVal.Car.Type != types.TypeSymbol ||
 			pair[1].PairVal.Car.SymbolVal != "syntax-rules" {
-			return nil, fmt.Errorf("let-syntax: transformer must be syntax-rules")
+			return nil, fmt.Errorf("%s: transformer must be syntax-rules", formName)
 		}
 
 		srArgs, err := pair[1].PairVal.Cdr.ToList()
 		if err != nil {
-			return nil, fmt.Errorf("let-syntax: invalid syntax-rules form")
+			return nil, fmt.Errorf("%s: invalid syntax-rules form", formName)
 		}
 		defEnv := e
 		if isRec {
@@ -753,7 +757,7 @@ func evalLetSyntaxCommon(expr *types.Value, e *env.Env, isRec bool) (*evalResult
 		}
 		sr, err := compileSyntaxRules(srArgs, defEnv)
 		if err != nil {
-			return nil, fmt.Errorf("let-syntax %s: %w", name, err)
+			return nil, fmt.Errorf("%s %s: %w", formName, name, err)
 		}
 		sr.Name = name
 		child.Define(name, types.NewSyntaxRules(sr))

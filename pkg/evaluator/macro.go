@@ -68,26 +68,27 @@ func compileSyntaxRules(args []*types.Value, e *env.Env) (*types.SyntaxRules, er
 	return sr, nil
 }
 
-// expandMacro tries to expand a macro application.
-// Returns the expanded form, or nil if no rule matches.
+// expandMacro expands a macro application.
+// It returns the expanded form, or an error if no rule matches.
 func expandMacro(sr *types.SyntaxRules, form *types.Value) (*types.Value, error) {
-	formList, err := form.ToList()
-	if err != nil {
+	// Macro application must be a (non-empty) pair
+	if form.Type != types.TypePair {
 		return nil, fmt.Errorf("macro application: expected list")
 	}
 
 	for _, rule := range sr.Rules {
-		patList, err := rule.Pattern.ToList()
-		if err != nil {
-			continue
-		}
-		if len(patList) == 0 {
+		// Top-level pattern must be a pair: (macro-name . args-pattern)
+		if rule.Pattern.Type != types.TypePair {
 			continue
 		}
 
-		// Skip the macro name in the pattern (first element)
+		// Match the rest of the pattern against the rest of the form,
+		// using matchSingle to support dotted patterns at the top level.
+		patArgs := rule.Pattern.PairVal.Cdr
+		formArgs := form.PairVal.Cdr
+
 		bindings := make(map[string]*macroBinding)
-		if matchPattern(patList[1:], formList[1:], sr, bindings) {
+		if matchSingle(patArgs, formArgs, sr, bindings) {
 			result, err := instantiateTemplate(rule.Template, bindings, sr)
 			if err != nil {
 				return nil, err
@@ -179,7 +180,10 @@ func matchSingle(pat *types.Value, form *types.Value, sr *types.SyntaxRules, bin
 		if isLiteral(name, sr) {
 			return form.Type == types.TypeSymbol && form.SymbolVal == name
 		}
-		// Pattern variable - bind it
+		// Pattern variable - bind it, but check consistency with existing binding
+		if existing, ok := bindings[name]; ok {
+			return existing.depth == 0 && existing.value.Equal(form)
+		}
 		bindings[name] = &macroBinding{value: form, depth: 0}
 		return true
 
@@ -200,14 +204,16 @@ func matchSingle(pat *types.Value, form *types.Value, sr *types.SyntaxRules, bin
 			if len(formElems) < len(patElems) {
 				return false
 			}
-			// Bind rest to remaining
-			rest := types.FromList(formElems[len(patElems):])
+			// Bind rest to remaining elements + tail
+			var rest *types.Value
 			if formTail != nil && formTail.Type != types.TypeNil {
-				// Reconstruct with tail
+				// Reconstruct dotted list: remaining elements . formTail
+				rest = formTail
 				for i := len(formElems) - 1; i >= len(patElems); i-- {
 					rest = types.Cons(formElems[i], rest)
 				}
-				rest = formTail
+			} else {
+				rest = types.FromList(formElems[len(patElems):])
 			}
 			return matchSingle(patTail, rest, sr, bindings)
 		}
@@ -384,12 +390,19 @@ func instantiate(tmpl *types.Value, bindings map[string]*macroBinding, sr *types
 
 			if hasEllipsis {
 				vars := collectTemplateVars(elem, bindings, sr)
-				count := 0
+				count := -1
 				for _, v := range vars {
 					if b, ok := bindings[v]; ok && b.depth > 0 {
-						count = len(b.values)
-						break
+						cur := len(b.values)
+						if count < 0 {
+							count = cur
+						} else if count != cur {
+							return nil, fmt.Errorf("inconsistent ellipsis variable lengths in vector template")
+						}
 					}
+				}
+				if count < 0 {
+					count = 0
 				}
 				for j := 0; j < count; j++ {
 					subBindings := make(map[string]*macroBinding)
