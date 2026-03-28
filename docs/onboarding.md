@@ -902,3 +902,4 @@ cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
 | [adr/](adr/) | Architecture Decision Records (3件) |
 | [SOW.md](../SOW.md) | Statement of Work |
 | [README.md](../README.md) | プロジェクト概要、クイックスタート、サンプルコード |
+| [.github/copilot-instructions.md](../.github/copilot-instructions.md) | GitHub Copilot 向けインストラクション |
