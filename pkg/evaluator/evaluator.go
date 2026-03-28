@@ -111,6 +111,24 @@ func evalList(expr *types.Value, e *env.Env) (*evalResult, error) {
 			return evalDo(expr, e)
 		case "quasiquote":
 			return evalQuasiquote(expr, e)
+		case "define-syntax":
+			return evalDefineSyntax(expr, e)
+		case "let-syntax":
+			return evalLetSyntax(expr, e)
+		case "letrec-syntax":
+			return evalLetrecSyntax(expr, e)
+		case "syntax-rules":
+			return nil, fmt.Errorf("syntax-rules can only appear inside define-syntax, let-syntax, or letrec-syntax")
+		}
+
+		// Check if head is a macro
+		if val, ok := e.Get(head.SymbolVal); ok && val.Type == types.TypeSyntaxRules {
+			expanded, err := expandMacro(val.SyntaxVal, expr)
+			if err != nil {
+				return nil, err
+			}
+			// Re-evaluate the expanded form (TCO)
+			return resultThunk(expanded, e), nil
 		}
 	}
 
@@ -653,6 +671,99 @@ func evalQuasiquote(expr *types.Value, e *env.Env) (*evalResult, error) {
 		return nil, err
 	}
 	return resultVal(result), nil
+}
+
+// ---------------------------------------------------------------------------
+// Macro special forms
+// ---------------------------------------------------------------------------
+
+func evalDefineSyntax(expr *types.Value, e *env.Env) (*evalResult, error) {
+	args, err := listArgs(expr)
+	if err != nil || len(args) != 2 {
+		return nil, fmt.Errorf("define-syntax requires name and transformer")
+	}
+	if args[0].Type != types.TypeSymbol {
+		return nil, fmt.Errorf("define-syntax: name must be a symbol")
+	}
+	name := args[0].SymbolVal
+
+	// The transformer must be a syntax-rules form
+	if args[1].Type != types.TypePair || args[1].PairVal.Car.Type != types.TypeSymbol ||
+		args[1].PairVal.Car.SymbolVal != "syntax-rules" {
+		return nil, fmt.Errorf("define-syntax: transformer must be syntax-rules")
+	}
+
+	srArgs, err := args[1].PairVal.Cdr.ToList()
+	if err != nil {
+		return nil, fmt.Errorf("define-syntax: invalid syntax-rules form")
+	}
+	sr, err := compileSyntaxRules(srArgs, e)
+	if err != nil {
+		return nil, fmt.Errorf("define-syntax %s: %w", name, err)
+	}
+	sr.Name = name
+
+	e.Define(name, types.NewSyntaxRules(sr))
+	return resultVal(types.Void()), nil
+}
+
+func evalLetSyntax(expr *types.Value, e *env.Env) (*evalResult, error) {
+	return evalLetSyntaxCommon(expr, e, false)
+}
+
+func evalLetrecSyntax(expr *types.Value, e *env.Env) (*evalResult, error) {
+	return evalLetSyntaxCommon(expr, e, true)
+}
+
+func evalLetSyntaxCommon(expr *types.Value, e *env.Env, isRec bool) (*evalResult, error) {
+	formName := "let-syntax"
+	if isRec {
+		formName = "letrec-syntax"
+	}
+	args, err := listArgs(expr)
+	if err != nil || len(args) < 2 {
+		return nil, fmt.Errorf("%s requires bindings and body", formName)
+	}
+
+	bindings, err := args[0].ToList()
+	if err != nil {
+		return nil, fmt.Errorf("%s: invalid bindings", formName)
+	}
+
+	child := env.New(e)
+
+	for _, b := range bindings {
+		pair, err := b.ToList()
+		if err != nil || len(pair) != 2 {
+			return nil, fmt.Errorf("%s: invalid binding", formName)
+		}
+		if pair[0].Type != types.TypeSymbol {
+			return nil, fmt.Errorf("%s: binding name must be a symbol", formName)
+		}
+		name := pair[0].SymbolVal
+
+		if pair[1].Type != types.TypePair || pair[1].PairVal.Car.Type != types.TypeSymbol ||
+			pair[1].PairVal.Car.SymbolVal != "syntax-rules" {
+			return nil, fmt.Errorf("%s: transformer must be syntax-rules", formName)
+		}
+
+		srArgs, err := pair[1].PairVal.Cdr.ToList()
+		if err != nil {
+			return nil, fmt.Errorf("%s: invalid syntax-rules form", formName)
+		}
+		defEnv := e
+		if isRec {
+			defEnv = child
+		}
+		sr, err := compileSyntaxRules(srArgs, defEnv)
+		if err != nil {
+			return nil, fmt.Errorf("%s %s: %w", formName, name, err)
+		}
+		sr.Name = name
+		child.Define(name, types.NewSyntaxRules(sr))
+	}
+
+	return evalBodyTCO(args[1:], child)
 }
 
 func expandQuasiquote(expr *types.Value, e *env.Env) (*types.Value, error) {
