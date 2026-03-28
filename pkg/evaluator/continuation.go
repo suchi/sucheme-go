@@ -22,12 +22,22 @@ type ContinuationEscape struct {
 var continuationCounter uint64
 
 // WindEntry represents a before/after pair for dynamic-wind.
+//
+// In this escape-only continuation implementation, WindEntry and windStack
+// record the nesting structure of dynamic-wind calls. The stack contents
+// are not inspected when moving between dynamic extents (e.g. when invoking
+// a captured continuation), so before/after thunks are not automatically
+// re-run across such transitions.
+//
+// For full re-entrant continuations, this stack would be used to compute
+// which before/after thunks need to be run when entering/leaving dynamic
+// extents relative to a captured continuation.
 type WindEntry struct {
 	Before *types.Value // thunk
 	After  *types.Value // thunk
 }
 
-// windStack tracks dynamic-wind entries.
+// windStack tracks dynamic-wind entries in a LIFO manner.
 //
 // NOTE: This stack is not thread-safe. It assumes a single-threaded evaluator.
 var windStack []*WindEntry
@@ -126,9 +136,13 @@ func dynamicWind(before, thunk, after *types.Value) (result *types.Value, err er
 	defer func() {
 		windStack = windStack[:len(windStack)-1]
 		_, afterErr := callProc(after, []*types.Value{})
-		if err == nil && afterErr != nil {
+		if afterErr != nil && err == nil {
+			// If we're returning normally and after fails, propagate after's error
 			err = afterErr
 		}
+		// Note: if the body panicked (e.g. ContinuationEscape), the panic
+		// will propagate after this defer completes. The after thunk is
+		// still executed, which is the key guarantee of dynamic-wind.
 	}()
 
 	result, err = callProc(thunk, []*types.Value{})
