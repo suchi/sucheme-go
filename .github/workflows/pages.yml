@@ -6,10 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+# Minimal default permissions
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
@@ -45,61 +44,9 @@ jobs:
           go test -coverprofile=coverage.out -covermode=atomic ./...
           go tool cover -html=coverage.out -o web-ui/dist/coverage.html
 
-      # Generate dashboard HTML
-      - name: Generate dashboard
-        run: |
-          cat > web-ui/dist/dashboard.html << 'DASHEOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <title>Sucheme - Test & Coverage Dashboard</title>
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #0d1117; color: #c9d1d9; }
-              h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
-              h2 { color: #79c0ff; margin-top: 30px; }
-              a { color: #58a6ff; text-decoration: none; }
-              a:hover { text-decoration: underline; }
-              .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 15px 0; }
-              .links a { display: inline-block; margin-right: 20px; padding: 8px 16px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; }
-              .links a:hover { background: #30363d; }
-              table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-              th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #30363d; }
-              th { color: #8b949e; }
-            </style>
-          </head>
-          <body>
-            <h1>Sucheme - Test & Coverage Dashboard</h1>
-            <div class="links">
-              <a href="index.html">Web REPL</a>
-              <a href="coverage.html">Coverage Report</a>
-              <a href="https://github.com/suchi/sucheme-go">GitHub</a>
-              <a href="https://github.com/suchi/sucheme-go/actions">CI/CD</a>
-            </div>
-            <div class="card">
-              <h2>Coverage</h2>
-              <p>Full interactive coverage report: <a href="coverage.html">coverage.html</a></p>
-              <p>Coverage is generated on every push to main by GitHub Actions.</p>
-            </div>
-            <div class="card">
-              <h2>CI/CD Status</h2>
-              <table>
-                <tr><th>Job</th><th>Platform</th><th>Description</th></tr>
-                <tr><td>test</td><td>ubuntu / macos / windows</td><td>Unit tests + go vet + CLI build</td></tr>
-                <tr><td>coverage</td><td>ubuntu</td><td>Coverage report + badge + PR comment</td></tr>
-                <tr><td>benchmark</td><td>ubuntu</td><td>Takeuchi, Fibonacci, TCO, List benchmarks</td></tr>
-                <tr><td>build-wasm</td><td>ubuntu</td><td>WebAssembly build (CI)</td></tr>
-                <tr><td>build</td><td>ubuntu</td><td>WASM + coverage dashboard + Pages deploy</td></tr>
-              </table>
-            </div>
-            <div class="card">
-              <h2>Benchmarks</h2>
-              <p>Benchmarks run on every push. Results are available as GitHub Actions artifacts.</p>
-              <p><a href="https://github.com/suchi/sucheme-go/actions/workflows/ci.yml">View latest benchmark results</a></p>
-            </div>
-          </body>
-          </html>
-          DASHEOF
+      # Copy dashboard template
+      - name: Copy dashboard
+        run: cp web-ui/dashboard.html web-ui/dist/dashboard.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
@@ -109,6 +56,9 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
