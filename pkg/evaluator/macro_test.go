@@ -242,6 +242,31 @@ func TestLetrecSyntax(t *testing.T) {
 // Nested patterns
 // =========================================================================
 
+func TestMacroDottedPattern(t *testing.T) {
+	r := evalMacro(t, `
+		(define-syntax my-apply
+			(syntax-rules ()
+				((my-apply f a . rest)
+				 (f a))))
+		(my-apply + 1 2 3)
+	`)
+	if r.IntVal != 1 {
+		t.Errorf("expected 1, got %s", r.String())
+	}
+}
+
+func TestMacroDottedPatternRest(t *testing.T) {
+	r := evalMacro(t, `
+		(define-syntax first-arg
+			(syntax-rules ()
+				((first-arg x . _) x)))
+		(first-arg 42 99 100)
+	`)
+	if r.IntVal != 42 {
+		t.Errorf("expected 42, got %s", r.String())
+	}
+}
+
 func TestMacroNestedPattern(t *testing.T) {
 	r := evalMacro(t, `
 		(define-syntax swap!

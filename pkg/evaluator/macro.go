@@ -82,6 +82,12 @@ func expandMacro(sr *types.SyntaxRules, form *types.Value) (*types.Value, error)
 			continue
 		}
 
+		// Verify that the pattern head matches the macro name
+		patHead := rule.Pattern.PairVal.Car
+		if patHead.Type == types.TypeSymbol && sr.Name != "" && patHead.SymbolVal != sr.Name {
+			continue
+		}
+
 		// Match the rest of the pattern against the rest of the form,
 		// using matchSingle to support dotted patterns at the top level.
 		patArgs := rule.Pattern.PairVal.Cdr
@@ -98,6 +104,59 @@ func expandMacro(sr *types.SyntaxRules, form *types.Value) (*types.Value, error)
 	}
 
 	return nil, fmt.Errorf("no matching pattern for macro %s", sr.Name)
+}
+
+// matchPatternPrefix matches patterns against the beginning of forms,
+// returning how many forms were consumed. Used for dotted pattern matching.
+func matchPatternPrefix(patterns []*types.Value, forms []*types.Value, sr *types.SyntaxRules, bindings map[string]*macroBinding) (int, bool) {
+	pi := 0
+	fi := 0
+
+	for pi < len(patterns) {
+		pat := patterns[pi]
+
+		hasEllipsis := pi+1 < len(patterns) &&
+			patterns[pi+1].Type == types.TypeSymbol &&
+			patterns[pi+1].SymbolVal == sr.Ellipsis
+
+		if hasEllipsis {
+			tailCount := len(patterns) - pi - 2
+			available := len(forms) - fi - tailCount
+			if available < 0 {
+				return 0, false
+			}
+
+			vars := collectPatternVars(pat, sr)
+			for _, v := range vars {
+				bindings[v] = &macroBinding{values: []*types.Value{}, depth: 1}
+			}
+
+			for i := 0; i < available; i++ {
+				subBindings := make(map[string]*macroBinding)
+				if !matchSingle(pat, forms[fi+i], sr, subBindings) {
+					return 0, false
+				}
+				for _, v := range vars {
+					if b, ok := subBindings[v]; ok {
+						bindings[v].values = append(bindings[v].values, b.value)
+					}
+				}
+			}
+			fi += available
+			pi += 2
+		} else {
+			if fi >= len(forms) {
+				return 0, false
+			}
+			if !matchSingle(pat, forms[fi], sr, bindings) {
+				return 0, false
+			}
+			pi++
+			fi++
+		}
+	}
+
+	return fi, true
 }
 
 // macroBinding holds a matched pattern variable's value.
@@ -198,18 +257,18 @@ func matchSingle(pat *types.Value, form *types.Value, sr *types.SyntaxRules, bin
 		// Check for dotted pattern tail
 		if patTail != nil && patTail.Type != types.TypeNil {
 			// Dotted pattern: (a b ... . rest)
-			// Count how many fixed patterns (non-ellipsis) are in patElems
-			// matchPattern handles ellipsis correctly, so pass all formElems
-			// and let it determine how many to consume
-			if !matchPattern(patElems, formElems, sr, bindings) {
+			// Use prefix matching: consume pattern elements and bind remaining to rest
+			consumed, ok := matchPatternPrefix(patElems, formElems, sr, bindings)
+			if !ok {
 				return false
 			}
-			// After matchPattern, the remaining forms (if any) + formTail go to patTail
-			// matchPattern consumes exactly len(formElems) forms,
-			// so the rest is just formTail
+			// Build rest from unconsumed formElems + formTail
 			rest := formTail
 			if rest == nil {
 				rest = types.Nil()
+			}
+			for i := len(formElems) - 1; i >= consumed; i-- {
+				rest = types.Cons(formElems[i], rest)
 			}
 			return matchSingle(patTail, rest, sr, bindings)
 		}
