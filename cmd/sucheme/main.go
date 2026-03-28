@@ -55,6 +55,8 @@ func main() {
 	e := env.Global()
 	builtin.RegisterBuiltins(e)
 	evaluator.RegisterApply(e)
+	evaluator.RegisterExceptionBuiltins(e)
+	evaluator.RegisterMapForEach(e)
 	registerDisplayWrite(e)
 
 	// Load -l files

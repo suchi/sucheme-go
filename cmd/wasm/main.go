@@ -27,6 +27,8 @@ func init() {
 	globalEnv = env.Global()
 	builtin.RegisterBuiltins(globalEnv)
 	evaluator.RegisterApply(globalEnv)
+	evaluator.RegisterExceptionBuiltins(globalEnv)
+	evaluator.RegisterMapForEach(globalEnv)
 	registerWASMIO(globalEnv)
 }
 
@@ -86,6 +88,8 @@ func resetJS(this js.Value, args []js.Value) interface{} {
 	globalEnv = env.Global()
 	builtin.RegisterBuiltins(globalEnv)
 	evaluator.RegisterApply(globalEnv)
+	evaluator.RegisterExceptionBuiltins(globalEnv)
+	evaluator.RegisterMapForEach(globalEnv)
 	registerWASMIO(globalEnv)
 	return nil
 }
