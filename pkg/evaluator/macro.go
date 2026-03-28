@@ -526,10 +526,3 @@ func collectTemplateVarsHelper(tmpl *types.Value, bindings map[string]*macroBind
 		}
 	}
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

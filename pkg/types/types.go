@@ -124,7 +124,7 @@ type SyntaxRules struct {
 	Ellipsis string       // ellipsis symbol (default "...")
 	Literals []string     // literal identifiers
 	Rules    []SyntaxRule // (pattern template) pairs
-	DefEnv   Env          // environment where macro was defined
+	DefEnv   Env          // environment where macro was defined (used for hygienic expansion in future)
 }
 
 // SyntaxRule is a single (pattern template) pair in syntax-rules.

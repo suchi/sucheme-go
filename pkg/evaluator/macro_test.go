@@ -3,41 +3,17 @@ package evaluator
 import (
 	"testing"
 
-	"github.com/suchi/sucheme-go/pkg/builtin"
-	"github.com/suchi/sucheme-go/pkg/env"
 	"github.com/suchi/sucheme-go/pkg/types"
 )
 
-func setupMacroEnv() *env.Env {
-	e := env.Global()
-	builtin.RegisterBuiltins(e)
-	RegisterApply(e)
-	return e
-}
-
-func evalMacro(t *testing.T, input string) *types.Value {
-	t.Helper()
-	e := setupMacroEnv()
-	result, err := EvalString(input, e)
-	if err != nil {
-		t.Fatalf("unexpected error evaluating %q: %v", input, err)
-	}
-	return result
-}
-
-func evalMacroErr(t *testing.T, input string) error {
-	t.Helper()
-	e := setupMacroEnv()
-	_, err := EvalString(input, e)
-	return err
-}
+// Reuses setupEval, evalHelper, evalErr from evaluator_test.go (same package)
 
 // =========================================================================
 // define-syntax basic
 // =========================================================================
 
 func TestDefineSyntaxBasic(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-if
 			(syntax-rules ()
 				((my-if test then else)
@@ -50,7 +26,7 @@ func TestDefineSyntaxBasic(t *testing.T) {
 }
 
 func TestDefineSyntaxFalse(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-if
 			(syntax-rules ()
 				((my-if test then else)
@@ -67,7 +43,7 @@ func TestDefineSyntaxFalse(t *testing.T) {
 // =========================================================================
 
 func TestMacroEllipsis(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-begin
 			(syntax-rules ()
 				((my-begin expr ...)
@@ -80,7 +56,7 @@ func TestMacroEllipsis(t *testing.T) {
 }
 
 func TestMacroEllipsisZero(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-list
 			(syntax-rules ()
 				((my-list x ...)
@@ -93,7 +69,7 @@ func TestMacroEllipsisZero(t *testing.T) {
 }
 
 func TestMacroEllipsisMultiple(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-list
 			(syntax-rules ()
 				((my-list x ...)
@@ -107,7 +83,7 @@ func TestMacroEllipsisMultiple(t *testing.T) {
 }
 
 func TestMacroWhen(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-when
 			(syntax-rules ()
 				((my-when test body ...)
@@ -120,7 +96,7 @@ func TestMacroWhen(t *testing.T) {
 }
 
 func TestMacroWhenFalse(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-when
 			(syntax-rules ()
 				((my-when test body ...)
@@ -168,7 +144,7 @@ func TestMacroMultipleRules(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.expect, func(t *testing.T) {
-			r := evalMacro(t, tt.input)
+			r := evalHelper(t, tt.input)
 			if r.String() != tt.expect {
 				t.Errorf("got %s, want %s", r.String(), tt.expect)
 			}
@@ -181,7 +157,7 @@ func TestMacroMultipleRules(t *testing.T) {
 // =========================================================================
 
 func TestMacroLiterals(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-cond
 			(syntax-rules (else)
 				((my-cond (else e ...))
@@ -200,7 +176,7 @@ func TestMacroLiterals(t *testing.T) {
 // =========================================================================
 
 func TestLetSyntax(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(let-syntax ((double (syntax-rules ()
 			((double x) (+ x x)))))
 			(double 5))
@@ -212,7 +188,7 @@ func TestLetSyntax(t *testing.T) {
 
 func TestLetSyntaxScope(t *testing.T) {
 	// double should not be visible outside let-syntax
-	err := evalMacroErr(t, `
+	err := evalErr(t, `
 		(let-syntax ((double (syntax-rules ()
 			((double x) (+ x x)))))
 			(double 5))
@@ -228,7 +204,7 @@ func TestLetSyntaxScope(t *testing.T) {
 // =========================================================================
 
 func TestLetrecSyntax(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(letrec-syntax ((double (syntax-rules ()
 			((double x) (+ x x)))))
 			(double 7))
@@ -243,7 +219,7 @@ func TestLetrecSyntax(t *testing.T) {
 // =========================================================================
 
 func TestMacroDottedPattern(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-apply
 			(syntax-rules ()
 				((my-apply f a . rest)
@@ -256,7 +232,7 @@ func TestMacroDottedPattern(t *testing.T) {
 }
 
 func TestMacroDottedPatternRest(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax first-arg
 			(syntax-rules ()
 				((first-arg x . _) x)))
@@ -268,7 +244,7 @@ func TestMacroDottedPatternRest(t *testing.T) {
 }
 
 func TestMacroNestedPattern(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax swap!
 			(syntax-rules ()
 				((swap! a b)
@@ -291,7 +267,7 @@ func TestMacroNestedPattern(t *testing.T) {
 // =========================================================================
 
 func TestMacroNoMatch(t *testing.T) {
-	err := evalMacroErr(t, `
+	err := evalErr(t, `
 		(define-syntax my-if
 			(syntax-rules ()
 				((my-if test then else)
@@ -304,14 +280,14 @@ func TestMacroNoMatch(t *testing.T) {
 }
 
 func TestMacroInvalidSyntaxRules(t *testing.T) {
-	err := evalMacroErr(t, `(define-syntax bad (syntax-rules))`)
+	err := evalErr(t, `(define-syntax bad (syntax-rules))`)
 	if err == nil {
 		t.Error("expected error: invalid syntax-rules")
 	}
 }
 
 func TestSyntaxRulesNotTopLevel(t *testing.T) {
-	err := evalMacroErr(t, `(syntax-rules () ((x) 1))`)
+	err := evalErr(t, `(syntax-rules () ((x) 1))`)
 	if err == nil {
 		t.Error("expected error: syntax-rules outside define-syntax")
 	}
@@ -322,7 +298,7 @@ func TestSyntaxRulesNotTopLevel(t *testing.T) {
 // =========================================================================
 
 func TestMacroWildcard(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax first
 			(syntax-rules ()
 				((first a _) a)))
@@ -338,7 +314,7 @@ func TestMacroWildcard(t *testing.T) {
 // =========================================================================
 
 func TestMacroWhileLoop(t *testing.T) {
-	r := evalMacro(t, `
+	r := evalHelper(t, `
 		(define-syntax my-while
 			(syntax-rules ()
 				((my-while test body ...)
