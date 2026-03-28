@@ -17,6 +17,7 @@ func setupEval() *env.Env {
 	RegisterParameterBuiltins(e)
 	RegisterPortBuiltins(e)
 	RegisterContinuationBuiltins(e)
+	RegisterLibraryBuiltins(e)
 	return e
 }
 
