@@ -1113,7 +1113,7 @@ func TestRoundNegativeHalf(t *testing.T) {
 	}
 }
 
-func TestRoundNeg2_5(t *testing.T) {
+func TestRoundNegativeTwoPointFive(t *testing.T) {
 	e := setup()
 	r := call(t, e, "round", types.NewFloat(-2.5))
 	if r.FloatVal != -2.0 {
@@ -1181,7 +1181,8 @@ func TestInexactExactAlreadyExact(t *testing.T) {
 
 func TestInexactExactNegativeZero(t *testing.T) {
 	e := setup()
-	r := call(t, e, "inexact->exact", types.NewFloat(0.0))
+	negZero := math.Copysign(0, -1)
+	r := call(t, e, "inexact->exact", types.NewFloat(negZero))
 	if r.Type != types.TypeInteger || r.IntVal != 0 {
 		t.Errorf("expected 0, got %s", r.String())
 	}
