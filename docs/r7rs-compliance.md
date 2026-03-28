@@ -6,8 +6,8 @@ Sucheme の R7RS (Revised⁷ Report on the Algorithmic Language Scheme) 準拠�
 
 ```mermaid
 pie title R7RS 対応状況
-    "対応完了" : 45
-    "部分対応" : 25
+    "対応完了" : 60
+    "部分対応" : 10
     "未対応" : 30
 ```
 
@@ -52,7 +52,7 @@ pie title R7RS 対応状況
 | `include` | 未対応 | |
 | `include-ci` | 未対応 | |
 | `cond-expand` | 未対応 | |
-| `parameterize` | 未対応 | |
+| `parameterize` | 対応完了 | `make-parameter` + 動的バインディングスタック |
 | `dynamic-wind` | 未対応 | |
 
 ## 例外処理
@@ -155,10 +155,15 @@ pie title R7RS 対応状況
 |------|------|------|
 | `display`, `write`, `newline` | 対応完了 | CLI: stdout, WASM: キャプチャ |
 | `read` | 未対応 | |
-| `read-char`, `write-char`, `read-line` | 未対応 | |
-| `open-input-file`, `open-output-file` | 未対応 | |
-| `open-input-string`, `open-output-string` | 未対応 | |
-| ポートシステム | 未対応 | |
+| `read-char`, `write-char`, `read-line` | 部分対応 | 文字列ポート経由。ポート引数必須（`current-*-port` 未実装） |
+| `peek-char`, `char-ready?` | 部分対応 | ポート引数必須（`current-input-port` 未実装） |
+| `write-string` | 部分対応 | ポート引数必須（`current-output-port` 未実装） |
+| `open-input-string`, `open-output-string` | 対応完了 | |
+| `get-output-string` | 対応完了 | |
+| `open-input-file`, `open-output-file` | 未対応 | WASM非対応 |
+| `port?`, `input-port?`, `output-port?`, `textual-port?` | 対応完了 | |
+| `close-port`, `close-input-port`, `close-output-port` | 対応完了 | |
+| `eof-object`, `eof-object?` | 対応完了 | |
 
 ## 継続
 

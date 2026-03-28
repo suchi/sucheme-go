@@ -1,7 +1,6 @@
 # Sucheme
 
 [![CI](https://github.com/suchi/sucheme-go/actions/workflows/ci.yml/badge.svg)](https://github.com/suchi/sucheme-go/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/suchi/sucheme-go/branch/main/graph/badge.svg)](https://codecov.io/gh/suchi/sucheme-go)
 [![NOLICENSE](https://img.shields.io/badge/License-NOLICENSE-red.svg)]()
 
 ## 概要
@@ -9,88 +8,55 @@
 **Sucheme** は、Go で実装された R7RS 準拠の Scheme インタプリタです。
 名前はリポジトリオーナー **suchi** に由来しています（"scheme" のタイポではありません）。
 
-教育・学習目的から実用まで、Scheme の仕様に忠実な実装を目指しています。
 ネイティブバイナリとしても、WebAssembly を通じてブラウザ上でも動作します。
 
 ## 特徴
 
 - **R7RS 準拠** — R7RS (small) 仕様に基づいた Scheme インタプリタ
 - **衛生的マクロ** — `syntax-rules` による完全なマクロシステム
-- **末尾呼び出し最適化 (TCO)** — 適切な末尾再帰の最適化
-- **第一級継続** — `call/cc` による継続のサポート
+- **末尾呼び出し最適化 (TCO)** — トランポリン方式による適切な末尾再帰
+- **例外処理** — `guard`, `raise`, `with-exception-handler`
+- **case-lambda** — 引数数に応じた複数節ディスパッチ
+- **パラメータ** — `make-parameter`, `parameterize` による動的束縛
+- **ポートI/O** — 文字列ポートによる入出力
 - **WebAssembly 対応** — ブラウザ上で動作する Web REPL
-- **クロスプラットフォーム** — Linux, macOS, Windows, WebAssembly をサポート
+- **クロスプラットフォーム** — Linux, macOS, Windows, WebAssembly
+- **104個のサンプル** — 基本からアルゴリズムまで10カテゴリ
+- **ベンチマーク** — 竹内関数、フィボナッチ等のパフォーマンス測定
 
 ## アーキテクチャ
 
 ```mermaid
 flowchart LR
-    Source["📄 ソースコード\n(.scm ファイル)"]
-    Lexer["🔤 Lexer\nトークン化"]
-    Parser["🌳 Parser\nS式解析"]
-    AST["🏗️ AST\n抽象構文木"]
-    Evaluator["⚙️ Evaluator\n評価器"]
-    Result["✅ 結果"]
-    Env["📦 Environment\n環境(変数束縛)"]
-
-    Source --> Lexer --> Parser --> AST --> Evaluator --> Result
-    Env <-.-> Evaluator
-```
-
-```mermaid
-flowchart TB
-    subgraph データフロー
-        direction TB
-        Input["入力"] --> Tokenize["トークン列に分解"]
-        Tokenize --> Parse["S式としてパース"]
-        Parse --> MacroExpand["マクロ展開"]
-        MacroExpand --> Eval["評価"]
-        Eval --> Output["出力"]
-    end
-
-    subgraph 主要コンポーネント
-        direction TB
-        TCO["末尾呼び出し最適化"]
-        Continuation["第一級継続"]
-        Hygiene["衛生的マクロ"]
-        Library["ライブラリシステム"]
-    end
-
-    Eval --- TCO
-    Eval --- Continuation
-    MacroExpand --- Hygiene
-    Eval --- Library
+    Source["ソースコード"] --> Lexer["Lexer<br/>pkg/lexer"]
+    Lexer --> Parser["Parser<br/>pkg/parser"]
+    Parser --> Evaluator["Evaluator<br/>pkg/evaluator"]
+    Evaluator --> Result["結果"]
+    Evaluator <--> Env["Environment<br/>pkg/env"]
+    Evaluator <--> Builtin["Builtin<br/>pkg/builtin"]
+    Evaluator <--> Macro["Macro<br/>evaluator/macro.go"]
 ```
 
 ## クイックスタート
 
 ### インストール
 
-**go install を使う場合:**
-
 ```bash
 go install github.com/suchi/sucheme-go/cmd/sucheme@latest
 ```
 
-**バイナリを直接ダウンロード:**
-
-[GitHub Releases](https://github.com/suchi/sucheme-go/releases) から対象プラットフォームのバイナリをダウンロードしてください。
-
-**Web UI で試す:**
-
-インストール不要で、ブラウザから直接お試しいただけます。
-https://suchi.github.io/sucheme-go/
-
 ### REPL 起動
 
 ```bash
-sucheme
+$ sucheme
 ```
 
+実行例:
+
 ```
-sucheme> (+ 1 2)
-3
-sucheme> (define (fact n) (if (<= n 1) 1 (* n (fact (- n 1)))))
+sucheme> (+ 1 2 3)
+6
+sucheme> (define (fact n) (if (= n 0) 1 (* n (fact (- n 1)))))
 sucheme> (fact 10)
 3628800
 ```
@@ -98,16 +64,19 @@ sucheme> (fact 10)
 ### ファイル実行
 
 ```bash
-sucheme run examples/hello.scm
+sucheme examples/basics/01-hello.scm
+sucheme examples/fibonacci.scm
 ```
 
 ### CLI オプション
 
 ```
-sucheme              # REPL モードで起動
-sucheme run FILE     # Scheme ファイルを実行
-sucheme --help       # ヘルプを表示
-sucheme --version    # バージョンを表示
+sucheme                     # REPL モードで起動
+sucheme file.scm            # Scheme ファイルを実行
+sucheme -e '(+ 1 2)'        # 式を直接評価
+sucheme -l lib.scm file.scm # ライブラリを先読みして実行
+sucheme -i file.scm         # 実行後REPLに入る
+sucheme --version            # バージョン表示
 ```
 
 ## Web UI
@@ -116,39 +85,14 @@ sucheme --version    # バージョンを表示
 
 **https://suchi.github.io/sucheme-go/**
 
-Go の WebAssembly ビルドを使用しており、インストール不要で利用できます。
-
 ## ビルド方法
 
-### ネイティブビルド
-
 ```bash
-go build -o sucheme ./cmd/sucheme
-```
-
-### WebAssembly ビルド
-
-```bash
-GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm
-```
-
-### テスト実行
-
-```bash
-go test ./...
-```
-
-### ベンチマーク
-
-```bash
-go test -bench=. ./...
-```
-
-### カバレッジ
-
-```bash
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out -o coverage.html
+go build -o sucheme ./cmd/sucheme/          # ネイティブビルド
+GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/  # WASM
+go test ./...                                 # テスト
+go test -bench=. -benchmem ./pkg/evaluator/   # ベンチマーク
+go test -coverprofile=coverage.out ./...      # カバレッジ
 ```
 
 ## プロジェクト構造
@@ -156,42 +100,53 @@ go tool cover -html=coverage.out -o coverage.html
 ```
 sucheme-go/
 ├── cmd/
-│   ├── sucheme/       # CLI エントリポイント
+│   ├── sucheme/       # CLI エントリポイント（REPL, ファイル実行, -e フラグ）
 │   └── wasm/          # WebAssembly エントリポイント
-├── pkg/               # ライブラリコード
-│   ├── lexer/         # トークナイザ
+├── pkg/
+│   ├── types/         # Scheme 値の型定義（Value, Pair, Lambda等）
+│   ├── lexer/         # R7RS準拠トークナイザ
 │   ├── parser/        # S式パーサ
-│   ├── evaluator/     # 評価器
-│   ├── object/        # Scheme オブジェクト定義
-│   └── environment/   # 環境(変数束縛)
-├── web-ui/            # Web REPL UI
-├── examples/          # サンプル Scheme プログラム
+│   ├── env/           # 環境（スコープチェーン）
+│   ├── evaluator/     # 評価器（TCO, マクロ, 例外, ポート, パラメータ）
+│   └── builtin/       # 100+ 組み込み関数
+├── web-ui/            # Web REPL UI（HTML/CSS/JS）
+├── examples/          # 104個のサンプルプログラム（10カテゴリ）
 ├── docs/              # ドキュメント
-│   └── adr/           # Architecture Decision Records
-├── go.mod
-└── README.md
+│   ├── adr/           # Architecture Decision Records
+│   ├── architecture-plan.md
+│   ├── r7rs-compliance.md  # R7RS対応状況（詳細版）
+│   ├── onboarding.md       # 開発者オンボーディング
+│   └── phase4-plan.md      # Phase 4 実装戦略
+├── .github/workflows/ # CI/CD（テスト, ベンチマーク, Pages, Release）
+├── CLAUDE.md          # Claude Code インストラクション
+└── SOW.md             # Statement of Work
 ```
 
 ## R7RS 対応状況
 
-> **注意**: 「対応完了」は関連テストが境界例・特殊例を含めてすべてパスした場合のみ付与されます。
+> 「対応完了」は関連テストが境界例・特殊例を含めてすべてパスした場合のみ付与。
+> 詳細は [docs/r7rs-compliance.md](docs/r7rs-compliance.md) を参照。
 
 | カテゴリ | 項目 | 状況 |
 |---------|------|------|
-| 基本構文 | `define`, `lambda`, `if`, `cond`, `let` 等 | 未対応 |
-| クォート | `quote`, `quasiquote`, `unquote` | 未対応 |
-| マクロ | `syntax-rules`, `define-syntax` | 未対応 |
-| 末尾呼び出し | 適切な末尾呼び出し最適化 | 未対応 |
+| 基本構文 | `define`, `lambda`, `if`, `cond`, `let`, `let*`, `letrec`, `letrec*`, `begin`, `set!`, `and`, `or`, `when`, `unless`, `do` | 対応完了 |
+| クォート | `quote`, `quasiquote`, `unquote`, `unquote-splicing` | 対応完了 |
+| マクロ | `syntax-rules`, `define-syntax`, `let-syntax`, `letrec-syntax` | 対応完了 |
+| 末尾呼び出し | トランポリン方式 TCO | 対応完了 |
+| 例外処理 | `guard`, `raise`, `raise-continuable`, `with-exception-handler`, `error` | 対応完了 |
+| case-lambda | 引数数ディスパッチ | 対応完了 |
+| パラメータ | `make-parameter`, `parameterize` | 対応完了 |
+| 数値 | `+`, `-`, `*`, `/`, `=`, `<`, `>`, `abs`, `min`, `max`, `floor`, `ceiling`, `round`, `expt`, `sqrt` 等 | 対応完了 |
+| リスト | `cons`, `car`, `cdr`, `list`, `map`, `filter`, `for-each`, `assoc`, `member` 等 | 対応完了 |
+| 文字列 | `string-length`, `string-ref`, `string-append`, `substring` 等 | 対応完了 |
+| 文字 | `char->integer`, `char-alphabetic?`, `char-upcase` 等 | 対応完了 |
+| ベクタ | `make-vector`, `vector-ref`, `vector-set!` 等 | 対応完了 |
+| バイトベクタ | `make-bytevector`, `bytevector-u8-ref` 等 | 対応完了 |
+| 等値 | `eq?`, `eqv?`, `equal?`, `boolean=?` | 対応完了 |
+| ポートI/O | `open-input-string`, `open-output-string`, `read-char`, `read-line`, `write-char` | 部分対応 |
 | 継続 | `call/cc`, `dynamic-wind` | 未対応 |
-| 例外処理 | `guard`, `raise`, `with-exception-handler` | 未対応 |
-| 多値 | `values`, `call-with-values` | 未対応 |
-| ポート/IO | `open-input-file`, `read`, `write` 等 | 未対応 |
+| 多値 | `values` (基本), `call-with-values` | 部分対応 |
 | ライブラリ | `define-library`, `import`, `export` | 未対応 |
-| データ型 | boolean, char, string, vector, bytevector | 部分対応 |
-| レキサー | トークン化 | 対応完了 |
-| パーサー | S式解析 | 対応完了 |
-
-詳細な対応状況は [`docs/`](docs/) ディレクトリを参照してください。
 
 ## サンプルコード
 
@@ -202,81 +157,67 @@ sucheme-go/
 (newline)
 ```
 
-### フィボナッチ数列
+### フィボナッチ（末尾再帰）
 
 ```scheme
-(define (fib n)
-  (if (<= n 1)
-      n
-      (+ (fib (- n 1))
-         (fib (- n 2)))))
-
-(display (fib 10))  ; => 55
-(newline)
+(define (fib-iter n)
+  (let loop ((i 0) (a 0) (b 1))
+    (if (= i n) a (loop (+ i 1) b (+ a b)))))
+(display (fib-iter 30))  ; => 832040
 ```
 
-### 末尾再帰による階乗
+### マクロ（while ループ）
 
 ```scheme
-(define (factorial n)
-  (define (loop n acc)
-    (if (<= n 1)
-        acc
-        (loop (- n 1) (* acc n))))
-  (loop n 1))
-
-(display (factorial 20))
-(newline)
-```
-
-### リスト操作
-
-```scheme
-(define (my-map f lst)
-  (if (null? lst)
-      '()
-      (cons (f (car lst))
-            (my-map f (cdr lst)))))
-
-(display (my-map (lambda (x) (* x x)) '(1 2 3 4 5)))
-; => (1 4 9 16 25)
-(newline)
-```
-
-### マクロの例
-
-```scheme
-(define-syntax my-when
+(define-syntax while
   (syntax-rules ()
-    ((my-when test body ...)
-     (if test (begin body ...)))))
+    ((while test body ...)
+     (let loop ()
+       (when test body ... (loop))))))
 
-(my-when #t
-  (display "条件が真です")
-  (newline))
+(define i 0)
+(while (< i 5)
+  (display i) (display " ")
+  (set! i (+ i 1)))
+; => 0 1 2 3 4
 ```
+
+### 例外処理
+
+```scheme
+(guard (exn
+  ((string? exn) (string-append "Error: " exn)))
+  (error "something went wrong"))
+; => "Error: something went wrong"
+```
+
+### パラメータ（動的束縛）
+
+```scheme
+(define p (make-parameter 10))
+(display (p))          ; => 10
+(parameterize ((p 20))
+  (display (p)))       ; => 20
+(display (p))          ; => 10
+```
+
+104個のサンプルが `examples/` ディレクトリにカテゴリ別に格納されています。
 
 ## ドキュメント
 
-- [Architecture Decision Records](docs/adr/) — 設計上の決定とその理由
-- [`examples/`](examples/) — サンプル Scheme プログラム集
+- [R7RS 対応状況](docs/r7rs-compliance.md) — 機能ごとの対応状況
+- [オンボーディング](docs/onboarding.md) — 開発者向けガイド
+- [アーキテクチャ設計](docs/architecture-plan.md) — 技術設計プラン
+- [Phase 4 計画](docs/phase4-plan.md) — 残りの実装戦略
+- [ADR](docs/adr/) — Architecture Decision Records
+- [SOW](SOW.md) — 作業範囲記述書
+- [サンプル](examples/) — 104個の Scheme プログラム
 
 ## コントリビューション
 
-コントリビューションを歓迎します。
-
-1. このリポジトリをフォーク
-2. フィーチャーブランチを作成 (`git checkout -b feature/my-feature`)
-3. 変更をコミット (`git commit -m 'Add my feature'`)
-4. ブランチにプッシュ (`git push origin feature/my-feature`)
-5. Pull Request を作成
-
-### 開発時の注意
-
-- テスト駆動開発 (TDD) を推奨します
-- コミット前に `go test ./...` を実行してください
-- コードは `gofmt` でフォーマットしてください
-- コミットメッセージは英語の命令形で記述してください
+1. フォーク → フィーチャーブランチ作成 → 実装 → テスト → PR
+2. Conventional Commits（`feat:`, `fix:`, `docs:` 等）
+3. PR は GitHub Copilot レビュー通過後にマージ
 
 ## ライセンス
 

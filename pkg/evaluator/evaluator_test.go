@@ -14,6 +14,8 @@ func setupEval() *env.Env {
 	RegisterApply(e)
 	RegisterExceptionBuiltins(e)
 	RegisterMapForEach(e)
+	RegisterParameterBuiltins(e)
+	RegisterPortBuiltins(e)
 	return e
 }
 

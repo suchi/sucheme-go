@@ -94,6 +94,7 @@ type Value struct {
 	ByteVec   []byte
 	ValuesVal []*Value      // for TypeValues (multiple return values)
 	SyntaxVal *SyntaxRules  // for TypeSyntaxRules
+	PortVal   any           // for TypePort (points to evaluator.Port)
 }
 
 // Pair is a cons cell.
@@ -147,6 +148,7 @@ type Procedure struct {
 	Lambda    *Lambda
 	Name      string
 	IsBuiltin bool
+	ParamRef  any // for parameter objects (points to evaluator.Parameter)
 }
 
 // ---------------------------------------------------------------------------

@@ -153,6 +153,7 @@ type Value struct {
     ByteVec   []byte        // TypeBytevector
     ValuesVal []*Value      // TypeValues
     SyntaxVal *SyntaxRules  // TypeSyntaxRules
+    PortVal   any           // TypePort
 }
 ```
 
@@ -164,6 +165,8 @@ builtin.RegisterBuiltins(e)
 evaluator.RegisterApply(e)
 evaluator.RegisterExceptionBuiltins(e)
 evaluator.RegisterMapForEach(e)
+evaluator.RegisterParameterBuiltins(e)
+evaluator.RegisterPortBuiltins(e)
 ```
 
 ## AI ツール向けインストラクション
