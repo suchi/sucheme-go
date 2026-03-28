@@ -23,5 +23,5 @@
          (loop (+ i 1) (+ i 1) (cons (substring s start i) acc)))
         (else (loop (+ i 1) start acc))))))
 
-(display (string-split "a,b,c,d" #\,))  ; => (a b c d)
+(display (string-split "a,b,c,d" #\,))  ; => ("a" "b" "c" "d")
 (newline)
