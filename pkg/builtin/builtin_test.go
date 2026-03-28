@@ -1075,16 +1075,16 @@ func TestAbsMinInt64Overflow(t *testing.T) {
 func TestAbsZero(t *testing.T) {
 	e := setup()
 	r := call(t, e, "abs", types.NewInteger(0))
-	if r.IntVal != 0 {
-		t.Errorf("expected 0, got %d", r.IntVal)
+	if r.Type != types.TypeInteger || r.IntVal != 0 {
+		t.Errorf("expected integer 0, got type=%v, intVal=%d", r.Type, r.IntVal)
 	}
 }
 
 func TestAbsPositive(t *testing.T) {
 	e := setup()
 	r := call(t, e, "abs", types.NewInteger(42))
-	if r.IntVal != 42 {
-		t.Errorf("expected 42, got %d", r.IntVal)
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected integer 42, got type=%v, intVal=%d", r.Type, r.IntVal)
 	}
 }
 
@@ -1141,8 +1141,8 @@ func TestExptNegativeExponent(t *testing.T) {
 func TestExptZeroBase(t *testing.T) {
 	e := setup()
 	r := call(t, e, "expt", types.NewInteger(0), types.NewInteger(0))
-	if r.IntVal != 1 {
-		t.Errorf("expected 1 for (expt 0 0), got %d", r.IntVal)
+	if r.Type != types.TypeInteger || r.IntVal != 1 {
+		t.Errorf("expected integer 1 for (expt 0 0), got %s", r.String())
 	}
 }
 
@@ -1553,16 +1553,16 @@ func TestMemqComparisonSemantics(t *testing.T) {
 func TestMinSingle(t *testing.T) {
 	e := setup()
 	r := call(t, e, "min", types.NewInteger(42))
-	if r.IntVal != 42 {
-		t.Errorf("expected 42, got %d", r.IntVal)
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected integer 42, got %s", r.String())
 	}
 }
 
 func TestMaxSingle(t *testing.T) {
 	e := setup()
 	r := call(t, e, "max", types.NewInteger(42))
-	if r.IntVal != 42 {
-		t.Errorf("expected 42, got %d", r.IntVal)
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected integer 42, got %s", r.String())
 	}
 }
 
