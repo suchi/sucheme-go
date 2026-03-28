@@ -75,12 +75,13 @@ pie title R7RS 対応状況
 | 不正確実数 (float64) | 対応完了 | |
 | `+`, `-`, `*`, `/` | 対応完了 | 可変長引数 |
 | `=`, `<`, `>`, `<=`, `>=` | 対応完了 | 型検証付き |
-| `abs`, `min`, `max` | 部分対応 | |
+| `abs`, `min`, `max` | 対応完了 | |
 | `modulo`, `remainder`, `quotient` | 対応完了 | |
-| `floor`, `ceiling`, `truncate`, `round` | 部分対応 | |
-| `sqrt`, `expt` | 部分対応 | |
+| `floor`, `ceiling`, `truncate`, `round` | 対応完了 | |
+| `sqrt`, `expt` | 対応完了 | |
 | `number->string`, `string->number` | 対応完了 | |
-| `exact->inexact`, `inexact->exact` | 部分対応 | |
+| `exact->inexact`, `inexact->exact` | 対応完了 | |
+| `zero?`, `positive?`, `negative?`, `odd?`, `even?` | 対応完了 | |
 | 有理数 | 未対応 | |
 | 複素数 | 未対応 | |
 
@@ -95,8 +96,8 @@ pie title R7RS 対応状況
 | `set-car!`, `set-cdr!` | 対応完了 | |
 | `map`, `for-each` | 対応完了 | lambda/builtin両対応 |
 | `filter` | 対応完了 | |
-| `assoc`, `assv`, `assq` | 部分対応 | |
-| `member`, `memv`, `memq` | 部分対応 | |
+| `assoc`, `assv`, `assq` | 対応完了 | |
+| `member`, `memv`, `memq` | 対応完了 | |
 | `null?`, `pair?`, `list?` | 対応完了 | |
 | `apply` | 対応完了 | lambda/builtin両対応 |
 | `values` | 部分対応 | 単一値のみ完全 |
@@ -111,7 +112,7 @@ pie title R7RS 対応状況
 | `string-upcase`, `string-downcase` | 対応完了 | |
 | `string=?`, `string<?`, `string>?` | 対応完了 | |
 | `string-copy`, `make-string` | 対応完了 | |
-| `string-set!` | 部分対応 | Go文字列は不変 |
+| `string-set!` | 未対応 | 未実装（Go文字列は不変のため要検討） |
 | `symbol->string`, `string->symbol` | 対応完了 | |
 
 ## 文字
@@ -144,7 +145,8 @@ pie title R7RS 対応状況
 
 | 機能 | 状態 | 備考 |
 |------|------|------|
-| `not`, `boolean?`, `boolean=?` | 対応完了 | |
+| `not`, `boolean?` | 対応完了 | |
+| `boolean=?` | 対応完了 | |
 | `eq?`, `eqv?`, `equal?` | 対応完了 | |
 
 ## I/O
