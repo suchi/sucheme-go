@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
 jobs:
   test:
     strategy:
@@ -17,11 +22,21 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go test ./... -v -count=1
+      - name: Run tests
+        run: go test ./... -v -count=1 -json > test-results.json 2>&1 || true
+        shell: bash
+      - name: Run tests (display)
+        run: go test ./... -v -count=1
       - run: go vet ./...
       - name: Build CLI
         run: go build -o sucheme ./cmd/sucheme/
         shell: bash
+      - name: Upload test results
+        if: always() && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.json
 
   coverage:
     runs-on: ubuntu-latest
@@ -30,15 +45,91 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - run: go test -coverprofile=coverage.out -covermode=atomic ./...
-      - run: go tool cover -html=coverage.out -o coverage.html
-      - run: go tool cover -func=coverage.out | tail -1
-      - uses: actions/upload-artifact@v4
+
+      - name: Run tests with coverage
+        run: go test -coverprofile=coverage.out -covermode=atomic -v ./... 2>&1 | tee test-output.txt
+
+      - name: Generate coverage report
+        run: |
+          go tool cover -html=coverage.out -o coverage.html
+          go tool cover -func=coverage.out > coverage-func.txt
+          go tool cover -func=coverage.out | tail -1
+
+      - name: Extract coverage percentage
+        id: coverage
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
+          echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "Coverage: $COVERAGE%"
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "## Test & Coverage Dashboard" > dashboard.md
+          echo "" >> dashboard.md
+          echo "### Coverage: ${{ steps.coverage.outputs.percentage }}%" >> dashboard.md
+          echo "" >> dashboard.md
+          echo "| Package | Coverage |" >> dashboard.md
+          echo "|---------|----------|" >> dashboard.md
+          go tool cover -func=coverage.out | grep -v "total:" | awk '{print "| " $1 " | " $3 " |"}' | sort -u >> dashboard.md
+          echo "" >> dashboard.md
+          echo "### Test Results" >> dashboard.md
+          echo "" >> dashboard.md
+          PASS=$(grep -c "^ok" test-output.txt || echo "0")
+          FAIL=$(grep -c "^FAIL" test-output.txt || echo "0")
+          echo "- **Passed packages**: $PASS" >> dashboard.md
+          echo "- **Failed packages**: $FAIL" >> dashboard.md
+          echo "" >> dashboard.md
+          echo "### Benchmark (latest)" >> dashboard.md
+          echo "" >> dashboard.md
+          echo "See benchmark job artifacts for details." >> dashboard.md
+
+      - name: Post coverage to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const coverage = '${{ steps.coverage.outputs.percentage }}';
+            const body = `## 📊 Test & Coverage Report\n\n**Coverage: ${coverage}%**\n\nDownload the full HTML report from the [Actions artifacts](${context.payload.pull_request.html_url}/checks).`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: |
             coverage.out
             coverage.html
+            coverage-func.txt
+            dashboard.md
+
+      - name: Generate coverage badge data
+        run: |
+          COVERAGE=${{ steps.coverage.outputs.percentage }}
+          mkdir -p .badges
+          if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+            COLOR="brightgreen"
+          elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
+            COLOR="yellow"
+          elif (( $(echo "$COVERAGE >= 40" | bc -l) )); then
+            COLOR="orange"
+          else
+            COLOR="red"
+          fi
+          echo "{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"${COVERAGE}%\",\"color\":\"${COLOR}\"}" > .badges/coverage.json
+          cat .badges/coverage.json
+
+      - name: Upload badge data
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-badge
+          path: .badges/coverage.json
 
   benchmark:
     runs-on: ubuntu-latest
@@ -53,10 +144,19 @@ jobs:
         run: |
           go build -o sucheme ./cmd/sucheme/
           time ./sucheme examples/tak.scm
+      - name: Generate benchmark summary
+        run: |
+          echo "## Benchmark Results" > benchmark-summary.md
+          echo "" >> benchmark-summary.md
+          echo '```' >> benchmark-summary.md
+          cat benchmark-results.txt >> benchmark-summary.md
+          echo '```' >> benchmark-summary.md
       - uses: actions/upload-artifact@v4
         with:
           name: benchmark-results
-          path: benchmark-results.txt
+          path: |
+            benchmark-results.txt
+            benchmark-summary.md
 
   build-wasm:
     runs-on: ubuntu-latest
