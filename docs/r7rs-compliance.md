@@ -77,7 +77,7 @@ pie title R7RS 対応状況
 | `=`, `<`, `>`, `<=`, `>=` | 対応完了 | 型検証付き |
 | `abs`, `min`, `max` | 対応完了 | |
 | `modulo`, `remainder`, `quotient` | 対応完了 | |
-| `floor`, `ceiling`, `truncate`, `round` | 対応完了 | |
+| `floor`, `ceiling`, `truncate`, `round` | 対応完了 | round は R7RS 偶数丸め準拠 |
 | `sqrt`, `expt` | 対応完了 | |
 | `number->string`, `string->number` | 対応完了 | |
 | `exact->inexact`, `inexact->exact` | 対応完了 | |
@@ -96,8 +96,8 @@ pie title R7RS 対応状況
 | `set-car!`, `set-cdr!` | 対応完了 | |
 | `map`, `for-each` | 対応完了 | lambda/builtin両対応 |
 | `filter` | 対応完了 | |
-| `assoc`, `assv`, `assq` | 対応完了 | |
-| `member`, `memv`, `memq` | 対応完了 | |
+| `assoc`, `assv`, `assq` | 部分対応 | `assoc` の任意比較手続き引数は未対応 |
+| `member`, `memv`, `memq` | 部分対応 | `member` の任意比較手続き引数は未対応 |
 | `null?`, `pair?`, `list?` | 対応完了 | |
 | `apply` | 対応完了 | lambda/builtin両対応 |
 | `values` | 部分対応 | 単一値のみ完全 |

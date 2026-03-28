@@ -227,6 +227,9 @@ func registerArithmetic(e *env.Env) {
 		switch args[0].Type {
 		case types.TypeInteger:
 			v := args[0].IntVal
+			if v == math.MinInt64 {
+				return nil, fmt.Errorf("integer overflow: abs of minimum int64")
+			}
 			if v < 0 {
 				v = -v
 			}
@@ -326,7 +329,7 @@ func registerArithmetic(e *env.Env) {
 		case types.TypeInteger:
 			return args[0], nil
 		case types.TypeFloat:
-			return types.NewFloat(math.Round(args[0].FloatVal)), nil
+			return types.NewFloat(math.RoundToEven(args[0].FloatVal)), nil
 		default:
 			return nil, fmt.Errorf("expected number")
 		}
@@ -336,6 +339,20 @@ func registerArithmetic(e *env.Env) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("expected 2 arguments")
 		}
+		// Integer exponentiation via repeated squaring
+		if args[0].Type == types.TypeInteger && args[1].Type == types.TypeInteger && args[1].IntVal >= 0 {
+			base := args[0].IntVal
+			exp := args[1].IntVal
+			result := int64(1)
+			for exp > 0 {
+				if exp%2 == 1 {
+					result *= base
+				}
+				base *= base
+				exp /= 2
+			}
+			return types.NewInteger(result), nil
+		}
 		base, berr := toFloat(args[0])
 		if berr != nil {
 			return nil, berr
@@ -344,11 +361,7 @@ func registerArithmetic(e *env.Env) {
 		if eerr != nil {
 			return nil, eerr
 		}
-		result := math.Pow(base, exp)
-		if args[0].Type == types.TypeInteger && args[1].Type == types.TypeInteger && args[1].IntVal >= 0 {
-			return types.NewInteger(int64(result)), nil
-		}
-		return types.NewFloat(result), nil
+		return types.NewFloat(math.Pow(base, exp)), nil
 	}))
 
 	e.Define("sqrt", types.NewProcedure("sqrt", func(args []*types.Value) (*types.Value, error) {
@@ -377,7 +390,14 @@ func registerArithmetic(e *env.Env) {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
 		if args[0].Type == types.TypeFloat {
-			return types.NewInteger(int64(args[0].FloatVal)), nil
+			f := args[0].FloatVal
+			if f != math.Trunc(f) {
+				return nil, fmt.Errorf("cannot convert non-integer float to exact: %g", f)
+			}
+			if f > float64(math.MaxInt64) || f < float64(math.MinInt64) {
+				return nil, fmt.Errorf("float value out of int64 range")
+			}
+			return types.NewInteger(int64(f)), nil
 		}
 		return args[0], nil
 	}))
@@ -560,8 +580,8 @@ func registerComparison(e *env.Env) {
 	}))
 
 	e.Define("assoc", types.NewProcedure("assoc", func(args []*types.Value) (*types.Value, error) {
-		if len(args) < 2 {
-			return nil, fmt.Errorf("expected at least 2 arguments")
+		if len(args) != 2 {
+			return nil, fmt.Errorf("expected 2 arguments (custom comparator not yet supported)")
 		}
 		key := args[0]
 		lst, err := args[1].ToList()
@@ -623,6 +643,9 @@ func registerComparison(e *env.Env) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("expected 2 arguments")
 		}
+		if args[1].Type != types.TypePair && args[1].Type != types.TypeNil {
+			return nil, fmt.Errorf("expected list")
+		}
 		cur := args[1]
 		for cur.Type == types.TypePair {
 			if args[0].Equal(cur.PairVal.Car) {
@@ -637,6 +660,9 @@ func registerComparison(e *env.Env) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("expected 2 arguments")
 		}
+		if args[1].Type != types.TypePair && args[1].Type != types.TypeNil {
+			return nil, fmt.Errorf("expected list")
+		}
 		cur := args[1]
 		for cur.Type == types.TypePair {
 			if args[0].Eqv(cur.PairVal.Car) {
@@ -650,6 +676,9 @@ func registerComparison(e *env.Env) {
 	e.Define("memq", types.NewProcedure("memq", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 2 {
 			return nil, fmt.Errorf("expected 2 arguments")
+		}
+		if args[1].Type != types.TypePair && args[1].Type != types.TypeNil {
+			return nil, fmt.Errorf("expected list")
 		}
 		cur := args[1]
 		for cur.Type == types.TypePair {
