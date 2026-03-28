@@ -99,16 +99,16 @@ func callWithCC(args []*types.Value) (result *types.Value, err error) {
 
 	// Create the continuation object (as a procedure)
 	cont := types.NewProcedure("continuation", func(contArgs []*types.Value) (*types.Value, error) {
-		if len(contArgs) < 1 {
-			return nil, fmt.Errorf("expected at least 1 argument")
-		}
 		if !alive {
 			return nil, fmt.Errorf("continuation is no longer valid (escape-only)")
 		}
 		var v *types.Value
-		if len(contArgs) == 1 {
+		switch len(contArgs) {
+		case 0:
+			v = types.NewValues([]*types.Value{})
+		case 1:
 			v = contArgs[0]
-		} else {
+		default:
 			v = types.NewValues(contArgs)
 		}
 		panic(ContinuationEscape{Value: v, Tag: tag})
@@ -168,8 +168,8 @@ func dynamicWind(before, thunk, after *types.Value) (result *types.Value, err er
 			panic(recovered)
 		}
 
-		// No panic in body
-		if afterErr != nil && err == nil {
+		// No panic in body. Prefer after's error even if body also errored.
+		if afterErr != nil {
 			err = afterErr
 		}
 	}()

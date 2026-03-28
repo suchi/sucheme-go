@@ -235,6 +235,18 @@ func TestCallCCFindFirstNotFound(t *testing.T) {
 	}
 }
 
+func TestCallCCZeroValues(t *testing.T) {
+	// Continuation called with 0 args should produce empty values
+	r := evalHelper(t, `
+		(call-with-values
+			(lambda () (call/cc (lambda (k) (k))))
+			(lambda () 42))
+	`)
+	if r.IntVal != 42 {
+		t.Errorf("expected 42, got %s", r.String())
+	}
+}
+
 func TestValuesBasic(t *testing.T) {
 	r := evalHelper(t, `(values 1)`)
 	if r.IntVal != 1 {
