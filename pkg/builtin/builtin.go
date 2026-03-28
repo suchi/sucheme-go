@@ -372,6 +372,9 @@ func registerArithmetic(e *env.Env) {
 		if err != nil {
 			return nil, err
 		}
+		if f < 0 {
+			return nil, fmt.Errorf("sqrt of negative number: %g", f)
+		}
 		return types.NewFloat(math.Sqrt(f)), nil
 	}))
 
@@ -379,17 +382,22 @@ func registerArithmetic(e *env.Env) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
-		if args[0].Type == types.TypeInteger {
+		switch args[0].Type {
+		case types.TypeInteger:
 			return types.NewFloat(float64(args[0].IntVal)), nil
+		case types.TypeFloat:
+			return args[0], nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
 		}
-		return args[0], nil
 	}))
 
 	e.Define("inexact->exact", types.NewProcedure("inexact->exact", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
-		if args[0].Type == types.TypeFloat {
+		switch args[0].Type {
+		case types.TypeFloat:
 			f := args[0].FloatVal
 			if f != math.Trunc(f) {
 				return nil, fmt.Errorf("cannot convert non-integer float to exact: %g", f)
@@ -398,8 +406,11 @@ func registerArithmetic(e *env.Env) {
 				return nil, fmt.Errorf("float value out of int64 range")
 			}
 			return types.NewInteger(int64(f)), nil
+		case types.TypeInteger:
+			return args[0], nil
+		default:
+			return nil, fmt.Errorf("expected number, got %s", args[0].Type)
 		}
-		return args[0], nil
 	}))
 
 	e.Define("zero?", types.NewProcedure("zero?", func(args []*types.Value) (*types.Value, error) {
@@ -653,6 +664,9 @@ func registerComparison(e *env.Env) {
 			}
 			cur = cur.PairVal.Cdr
 		}
+		if cur.Type != types.TypeNil {
+			return nil, fmt.Errorf("expected proper list")
+		}
 		return types.False, nil
 	}))
 
@@ -670,6 +684,9 @@ func registerComparison(e *env.Env) {
 			}
 			cur = cur.PairVal.Cdr
 		}
+		if cur.Type != types.TypeNil {
+			return nil, fmt.Errorf("expected proper list")
+		}
 		return types.False, nil
 	}))
 
@@ -686,6 +703,9 @@ func registerComparison(e *env.Env) {
 				return cur, nil
 			}
 			cur = cur.PairVal.Cdr
+		}
+		if cur.Type != types.TypeNil {
+			return nil, fmt.Errorf("expected proper list")
 		}
 		return types.False, nil
 	}))
