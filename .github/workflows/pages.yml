@@ -50,7 +50,7 @@ jobs:
           # Generate dashboard HTML
           cat > web-ui/dist/dashboard.html << 'DASHEOF'
           <!DOCTYPE html>
-          <html lang="ja">
+          <html lang="en">
           <head>
             <meta charset="utf-8">
             <title>Sucheme - Test & Coverage Dashboard</title>
@@ -91,7 +91,8 @@ jobs:
                 <tr><td>test</td><td>ubuntu / macos / windows</td><td>Unit tests + go vet + CLI build</td></tr>
                 <tr><td>coverage</td><td>ubuntu</td><td>Coverage report + badge + PR comment</td></tr>
                 <tr><td>benchmark</td><td>ubuntu</td><td>Takeuchi, Fibonacci, TCO, List benchmarks</td></tr>
-                <tr><td>build-wasm</td><td>ubuntu</td><td>WebAssembly build</td></tr>
+                <tr><td>build-wasm</td><td>ubuntu</td><td>WebAssembly build (CI)</td></tr>
+                <tr><td>build</td><td>ubuntu</td><td>WASM + coverage dashboard + Pages deploy</td></tr>
               </table>
             </div>
             <div class="card">
