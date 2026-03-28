@@ -1108,16 +1108,16 @@ func TestRoundInteger(t *testing.T) {
 func TestRoundNegativeHalf(t *testing.T) {
 	e := setup()
 	r := call(t, e, "round", types.NewFloat(-0.5))
-	if r.FloatVal != 0.0 {
-		t.Errorf("expected 0.0 (even), got %f", r.FloatVal)
+	if r.Type != types.TypeFloat || r.FloatVal != 0.0 {
+		t.Errorf("expected float 0.0 (even), got %s", r.String())
 	}
 }
 
 func TestRoundNegativeTwoPointFive(t *testing.T) {
 	e := setup()
 	r := call(t, e, "round", types.NewFloat(-2.5))
-	if r.FloatVal != -2.0 {
-		t.Errorf("expected -2.0 (even), got %f", r.FloatVal)
+	if r.Type != types.TypeFloat || r.FloatVal != -2.0 {
+		t.Errorf("expected -2.0 float (even), got %s", r.String())
 	}
 }
 
@@ -1508,13 +1508,13 @@ func TestAssvComparisonSemantics(t *testing.T) {
 
 func TestAssqComparisonSemantics(t *testing.T) {
 	e := setup()
-	// assq uses eq? (pointer equality) - different string objects should NOT match
+	// assq uses eq? - for strings it compares object identity, so different string objects should NOT match
 	alist := types.FromList([]*types.Value{
 		types.Cons(types.NewString("key"), types.NewInteger(1)),
 	})
 	r := call(t, e, "assq", types.NewString("key"), alist)
 	if r.Type == types.TypePair {
-		t.Error("assq should NOT find different string objects (eq? is pointer equality)")
+		t.Error("assq should NOT find different string objects (eq? compares string object identity, not contents)")
 	}
 }
 
@@ -1541,11 +1541,11 @@ func TestMemvComparisonSemantics(t *testing.T) {
 
 func TestMemqComparisonSemantics(t *testing.T) {
 	e := setup()
-	// memq uses eq? - different string objects should NOT match
+	// memq uses eq? - for strings, non-identical objects should NOT match
 	lst := types.FromList([]*types.Value{types.NewString("hello")})
 	r := call(t, e, "memq", types.NewString("hello"), lst)
 	if r.Type == types.TypePair {
-		t.Error("memq should NOT find different string objects (eq? is pointer equality)")
+		t.Error("memq should NOT find non-identical string objects (eq? is false for distinct strings)")
 	}
 }
 
