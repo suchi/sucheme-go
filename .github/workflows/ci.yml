@@ -27,6 +27,7 @@ jobs:
       - name: Build CLI
         run: go build -o sucheme ./cmd/sucheme/
         shell: bash
+
   coverage:
     runs-on: ubuntu-latest
     steps:
@@ -58,41 +59,66 @@ jobs:
         run: |
           echo "## Test & Coverage Dashboard" > dashboard.md
           echo "" >> dashboard.md
-          echo "### Coverage: ${{ steps.coverage.outputs.percentage }}%" >> dashboard.md
-          echo "" >> dashboard.md
-          echo "| File | Function | Coverage |" >> dashboard.md
-          echo "|------|----------|----------|" >> dashboard.md
-          go tool cover -func=coverage.out | grep -v "total:" | awk '{print "| " $1 " | " $2 " | " $3 " |"}' | head -30 >> dashboard.md
-          echo "" >> dashboard.md
-          echo "(Top 30 shown. Full report in coverage.html)" >> dashboard.md
+          if [ -f coverage.out ]; then
+            echo "### Coverage: ${{ steps.coverage.outputs.percentage }}%" >> dashboard.md
+            echo "" >> dashboard.md
+            echo "| File | Function | Coverage |" >> dashboard.md
+            echo "|------|----------|----------|" >> dashboard.md
+            go tool cover -func=coverage.out | grep -v "total:" | awk '{print "| " $1 " | " $2 " | " $3 " |"}' | head -30 >> dashboard.md
+            echo "" >> dashboard.md
+            echo "(Top 30 shown. Full report in coverage.html)" >> dashboard.md
+          else
+            echo "Coverage data not available (tests may have failed)." >> dashboard.md
+          fi
           echo "" >> dashboard.md
           echo "### Test Results" >> dashboard.md
           echo "" >> dashboard.md
-          PASS=$(grep -c "^ok" test-output.txt || echo "0")
-          FAIL=$(grep -c "^FAIL" test-output.txt || echo "0")
-          echo "- **Passed packages**: $PASS" >> dashboard.md
-          echo "- **Failed packages**: $FAIL" >> dashboard.md
-          echo "" >> dashboard.md
-          echo "### Benchmark (latest)" >> dashboard.md
-          echo "" >> dashboard.md
-          echo "See benchmark job artifacts for details." >> dashboard.md
+          if [ -f test-output.txt ]; then
+            PASS=$(grep -c "^ok" test-output.txt || echo "0")
+            FAIL=$(grep -c "^FAIL" test-output.txt || echo "0")
+            echo "- **Passed packages**: $PASS" >> dashboard.md
+            echo "- **Failed packages**: $FAIL" >> dashboard.md
+          else
+            echo "Test output not available." >> dashboard.md
+          fi
 
-      - name: Post coverage to PR
+      - name: Post coverage to PR (sticky comment)
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const coverage = '${{ steps.coverage.outputs.percentage }}';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const body = `## 📊 Test & Coverage Report\n\n**Coverage: ${coverage}%**\n\nDownload the full HTML report from [Actions artifacts](${runUrl}).`;
-            github.rest.issues.createComment({
+            const marker = '<!-- coverage-report -->';
+            const body = `${marker}\n## 📊 Test & Coverage Report\n\n**Coverage: ${coverage}%**\n\nDownload the full HTML report from [Actions artifacts](${runUrl}).`;
+
+            const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: body
+              per_page: 100,
             });
 
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body,
+              });
+            }
+
       - name: Upload coverage artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -101,8 +127,10 @@ jobs:
             coverage.html
             coverage-func.txt
             dashboard.md
+          if-no-files-found: ignore
 
       - name: Generate coverage badge data
+        if: steps.coverage.outputs.percentage != ''
         run: |
           COVERAGE=${{ steps.coverage.outputs.percentage }}
           mkdir -p .badges
@@ -116,13 +144,14 @@ jobs:
             COLOR="red"
           fi
           echo "{\"schemaVersion\":1,\"label\":\"coverage\",\"message\":\"${COVERAGE}%\",\"color\":\"${COLOR}\"}" > .badges/coverage.json
-          cat .badges/coverage.json
 
       - name: Upload badge data
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-badge
           path: .badges/coverage.json
+          if-no-files-found: ignore
 
   benchmark:
     runs-on: ubuntu-latest
@@ -162,7 +191,6 @@ jobs:
         run: GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
       - name: Copy wasm_exec.js
         run: |
-          # Go 1.24+ moved wasm_exec.js location
           if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
             cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
           elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then

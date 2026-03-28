@@ -39,15 +39,15 @@ jobs:
           cp web-ui/style.css web-ui/dist/
           cp web-ui/app.js web-ui/dist/
 
-      # Generate coverage dashboard
+      # Generate coverage for Pages
       - name: Generate coverage
         run: |
           go test -coverprofile=coverage.out -covermode=atomic ./...
           go tool cover -html=coverage.out -o web-ui/dist/coverage.html
-          COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}')
-          echo "Coverage: $COVERAGE"
 
-          # Generate dashboard HTML
+      # Generate dashboard HTML
+      - name: Generate dashboard
+        run: |
           cat > web-ui/dist/dashboard.html << 'DASHEOF'
           <!DOCTYPE html>
           <html lang="en">
@@ -60,9 +60,6 @@ jobs:
               h2 { color: #79c0ff; margin-top: 30px; }
               a { color: #58a6ff; text-decoration: none; }
               a:hover { text-decoration: underline; }
-              .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-weight: bold; margin: 5px 0; }
-              .green { background: #238636; color: #fff; }
-              .yellow { background: #9e6a03; color: #fff; }
               .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 15px 0; }
               .links a { display: inline-block; margin-right: 20px; padding: 8px 16px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; }
               .links a:hover { background: #30363d; }
