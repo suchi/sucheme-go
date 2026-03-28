@@ -27,7 +27,12 @@ jobs:
         run: |
           mkdir -p web-ui/dist
           GOOS=js GOARCH=wasm go build -o web-ui/dist/sucheme.wasm ./cmd/wasm/
-          cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/dist/
+          # Go 1.24+ may have moved wasm_exec.js
+          if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
+            cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/dist/
+          elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
+            cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/dist/
+          fi
           cp web-ui/index.html web-ui/dist/
           cp web-ui/style.css web-ui/dist/
           cp web-ui/app.js web-ui/dist/
