@@ -93,13 +93,25 @@ func callWithCC(args []*types.Value) (result *types.Value, err error) {
 	continuationCounter++
 	tag := continuationCounter
 
+	// Liveness flag: becomes false when callWithCC exits
+	alive := true
+	defer func() { alive = false }()
+
 	// Create the continuation object (as a procedure)
 	cont := types.NewProcedure("continuation", func(contArgs []*types.Value) (*types.Value, error) {
-		if len(contArgs) != 1 {
-			return nil, fmt.Errorf("continuation expects 1 argument")
+		if len(contArgs) < 1 {
+			return nil, fmt.Errorf("expected at least 1 argument")
 		}
-		// Escape to the call/cc capture point
-		panic(ContinuationEscape{Value: contArgs[0], Tag: tag})
+		if !alive {
+			return nil, fmt.Errorf("continuation is no longer valid (escape-only)")
+		}
+		var v *types.Value
+		if len(contArgs) == 1 {
+			v = contArgs[0]
+		} else {
+			v = types.NewValues(contArgs)
+		}
+		panic(ContinuationEscape{Value: v, Tag: tag})
 	})
 
 	// Set up recover to catch the escape
@@ -135,14 +147,31 @@ func dynamicWind(before, thunk, after *types.Value) (result *types.Value, err er
 	// Call body thunk, ensuring after is called even on panic
 	defer func() {
 		windStack = windStack[:len(windStack)-1]
+
+		// Recover any panic from the body (including ContinuationEscape)
+		var recovered interface{}
+		if r := recover(); r != nil {
+			recovered = r
+		}
+
+		// Always run the after thunk
 		_, afterErr := callProc(after, []*types.Value{})
+
+		if recovered != nil {
+			if afterErr != nil {
+				// Body panicked and after also failed: suppress panic, return after's error
+				result = nil
+				err = afterErr
+				return
+			}
+			// After succeeded: re-panic the original value
+			panic(recovered)
+		}
+
+		// No panic in body
 		if afterErr != nil && err == nil {
-			// If we're returning normally and after fails, propagate after's error
 			err = afterErr
 		}
-		// Note: if the body panicked (e.g. ContinuationEscape), the panic
-		// will propagate after this defer completes. The after thunk is
-		// still executed, which is the key guarantee of dynamic-wind.
 	}()
 
 	result, err = callProc(thunk, []*types.Value{})

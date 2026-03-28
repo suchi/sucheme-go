@@ -78,6 +78,29 @@ func TestCallCCEarlyReturn(t *testing.T) {
 	}
 }
 
+func TestCallCCExpiredContinuation(t *testing.T) {
+	// Continuation called after call/cc scope has exited should error, not panic
+	err := evalErr(t, `
+		(define saved-k #f)
+		(call/cc (lambda (k) (set! saved-k k) 42))
+		(saved-k 99)
+	`)
+	if err == nil {
+		t.Error("expected error for expired continuation")
+	}
+}
+
+func TestCallCCWithMultipleValues(t *testing.T) {
+	r := evalHelper(t, `
+		(call-with-values
+			(lambda () (call/cc (lambda (k) (k 1 2 3))))
+			(lambda (a b c) (+ a b c)))
+	`)
+	if r.IntVal != 6 {
+		t.Errorf("expected 6, got %s", r.String())
+	}
+}
+
 func TestCallCCError(t *testing.T) {
 	err := evalErr(t, `(call/cc 42)`)
 	if err == nil {
@@ -112,6 +135,9 @@ func TestDynamicWindBasic(t *testing.T) {
 	lst, _ := r.ToList()
 	if len(lst) != 3 {
 		t.Errorf("expected 3 entries, got %s", r.String())
+	}
+	if lst[0].SymbolVal != "before" || lst[1].SymbolVal != "during" || lst[2].SymbolVal != "after" {
+		t.Errorf("expected (before during after), got %s", r.String())
 	}
 }
 
