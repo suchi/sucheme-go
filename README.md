@@ -34,7 +34,7 @@ flowchart LR
     Evaluator --> Result["結果"]
     Evaluator <--> Env["Environment<br/>pkg/env"]
     Evaluator <--> Builtin["Builtin<br/>pkg/builtin"]
-    Evaluator <--> Macro["Macro<br/>macro.go"]
+    Evaluator <--> Macro["Macro<br/>evaluator/macro.go"]
 ```
 
 ## クイックスタート

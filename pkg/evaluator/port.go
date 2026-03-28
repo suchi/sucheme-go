@@ -191,7 +191,8 @@ func RegisterPortBuiltins(e *env.Env) {
 		if len(args) != 1 {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
-		return types.NewBoolean(args[0].Type == types.TypePort), nil
+		_, err := getPort(args[0])
+		return types.NewBoolean(err == nil), nil
 	}))
 
 	e.Define("input-port?", types.NewProcedure("input-port?", func(args []*types.Value) (*types.Value, error) {
@@ -227,7 +228,8 @@ func RegisterPortBuiltins(e *env.Env) {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
 		// All ports in this implementation are textual
-		return types.NewBoolean(args[0].Type == types.TypePort), nil
+		_, err := getPort(args[0])
+		return types.NewBoolean(err == nil), nil
 	}))
 
 	e.Define("close-port", types.NewProcedure("close-port", func(args []*types.Value) (*types.Value, error) {
