@@ -120,9 +120,17 @@ if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
 }
 ```
 
+> **注意 (PowerShell)**: `$env:GOOS` / `$env:GOARCH` は PowerShell セッションに残り続けます。WASM ビルド後にネイティブビルドを行う場合は、別セッションで実行するか `Remove-Item Env:GOOS, Env:GOARCH` で環境変数を戻してください。
+
 ```bat
 rem Windows (cmd)
 set GOOS=js&& set GOARCH=wasm&& go build -o web-ui/sucheme.wasm ./cmd/wasm/
+for /f "delims=" %%G in ('go env GOROOT') do set GOROOT=%%G
+if exist "%GOROOT%\misc\wasm\wasm_exec.js" (
+  copy "%GOROOT%\misc\wasm\wasm_exec.js" web-ui\
+) else if exist "%GOROOT%\lib\wasm\wasm_exec.js" (
+  copy "%GOROOT%\lib\wasm\wasm_exec.js" web-ui\
+)
 ```
 
 > **注**: Windows では Git Bash や WSL を使えば Linux と同じコマンドが使えます。ローカルで Web UI を確認するには HTTP サーバー（例: `cd web-ui && python3 -m http.server 8080`）を起動してブラウザでアクセスしてください。
