@@ -10,7 +10,7 @@
            (loop (cdr cs) (+ depth 1)))
           ((equal? (car cs) 'close)
            (loop (cdr cs) (- depth 1)))
-          (else (loop (cdr cs) depth)))))
+          (else #f))))
 
 ; Generate all balanced parentheses of n pairs
 (define (gen-parens n)

@@ -2,7 +2,8 @@
 ; Demonstrates closures for encapsulation and mutation for state management.
 ; Uses tombstone markers for transactional deletes.
 
-(define *tombstone* (list '*deleted*))  ; unique sentinel
+; Unique sentinel object - compared by identity (eq?) not structure (equal?)
+(define *tombstone* (list '*deleted*))
 
 (define (make-kvstore)
   (let ((data '())
@@ -16,7 +17,7 @@
       (if transaction
           (let ((txn-entry (assoc key txn-data)))
             (if txn-entry
-                (if (equal? (cdr txn-entry) *tombstone*)
+                (if (eq? (cdr txn-entry) *tombstone*)
                     #f  ; deleted in transaction
                     (cdr txn-entry))
                 (let ((entry (assoc key data)))
@@ -40,7 +41,7 @@
         (set! transaction #f)
         (set! txn-data '())
         (for-each (lambda (pair)
-                    (if (equal? (cdr pair) *tombstone*)
+                    (if (eq? (cdr pair) *tombstone*)
                         (delete! (car pair))
                         (put! (car pair) (cdr pair))))
                   saved))
