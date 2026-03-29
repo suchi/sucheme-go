@@ -167,17 +167,71 @@
       border-radius: 10px;
       padding: 24px;
     }
-    .card h2 {
+    .card h3 {
       color: var(--text-accent);
       font-size: 1.2em;
       margin-bottom: 16px;
       border-bottom: 1px solid var(--border-color);
       padding-bottom: 8px;
     }
-    .card h3 {
+    .card h4 {
       color: var(--text-primary);
       font-size: 1em;
       margin: 12px 0 8px;
+    }
+
+    /* ===== Utility classes (reduce inline styles) ===== */
+    .muted-text {
+      font-size: 0.85em;
+      color: var(--text-secondary);
+    }
+    .card-note {
+      font-size: 0.75em;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      font-style: italic;
+    }
+    .card-note-lg {
+      font-size: 0.75em;
+      color: var(--text-secondary);
+      margin-top: 12px;
+      font-style: italic;
+    }
+    .card-spaced {
+      margin-bottom: 28px;
+    }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .r7rs-summary {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .r7rs-count {
+      text-align: center;
+    }
+    .r7rs-count-value {
+      font-size: 2.2em;
+      font-weight: 700;
+    }
+    .r7rs-count-label {
+      font-size: 0.8em;
+      color: var(--text-secondary);
+    }
+    .r7rs-bar-area {
+      flex: 1;
+      min-width: 200px;
+    }
+    .bench-desc {
+      margin-bottom: 12px;
+    }
+    .td-muted {
+      color: var(--text-secondary);
+    }
+    .td-pass {
+      color: var(--green);
     }
 
     /* ===== Stat cards (hero numbers) ===== */
@@ -204,9 +258,11 @@
       margin-top: 4px;
       font-style: italic;
     }
-    .color-green { color: var(--green); }
-    .color-blue  { color: var(--blue); }
+    .color-green  { color: var(--green); }
+    .color-blue   { color: var(--blue); }
     .color-yellow { color: var(--yellow); }
+    .color-orange { color: var(--orange); }
+    .color-red    { color: var(--red); }
 
     /* ===== CSS-only donut chart ===== */
     .donut-container {
@@ -288,6 +344,10 @@
     .pct-yellow { color: var(--yellow); }
     .pct-orange { color: var(--orange); }
     .pct-red    { color: var(--red); }
+    .progress-bar-sm { height: 12px; }
+    .bg-green  { background: var(--green); }
+    .bg-yellow { background: var(--yellow); }
+    .bg-red    { background: var(--red); }
 
     /* ===== Tables ===== */
     table { width: 100%; border-collapse: collapse; margin: 8px 0; }
@@ -398,7 +458,7 @@
     <!--
       TODO: To show the real last-run timestamp, have CI inject the value.
       In pages.yml, add a step like:
-        sed -i "s/__BUILD_TIMESTAMP__/$(date -u +%Y-%m-%dT%H:%M:%SZ)/" web-ui/dist/dashboard.html
+        sed -i "s/__BUILD_TIMESTAMP__/$(date -u '+%Y-%m-%d %H:%M UTC')/" web-ui/dist/dashboard.html
     -->
     <div class="timestamp" id="build-timestamp">Last build: __BUILD_TIMESTAMP__</div>
 
@@ -422,7 +482,7 @@
           TODO (CI integration): Inject real coverage %.
             sed -i "s/__COVERAGE_PCT__/$COVERAGE/" web-ui/dist/dashboard.html
         -->
-        <div class="stat-value color-green" id="stat-coverage">--</div>
+        <div class="stat-value" id="stat-coverage">--</div>
         <div class="stat-label">Total Coverage</div>
         <div class="stat-note">(approx. &mdash; see CI for exact value)</div>
       </div>
@@ -449,7 +509,7 @@
     <div class="grid-2col">
       <!-- Donut chart -->
       <div class="card">
-        <h2>Overall Coverage</h2>
+        <h3>Overall Coverage</h3>
         <div class="donut-container">
           <!--
             TODO (CI integration): Set the real overall coverage value.
@@ -463,7 +523,7 @@
               <span class="donut-label">coverage</span>
             </div>
           </div>
-          <p style="font-size:0.85em; color:var(--text-secondary);">
+          <p class="muted-text">
             Full interactive report: <a href="coverage.html">coverage.html</a>
           </p>
         </div>
@@ -471,7 +531,7 @@
 
       <!-- Per-package progress bars -->
       <div class="card">
-        <h2>Package Coverage</h2>
+        <h3>Package Coverage</h3>
         <!--
           TODO (CI integration): Replace the static percentages below with real
           per-package coverage. In pages.yml, parse coverage.out per directory
@@ -514,7 +574,7 @@
             <span class="progress-pct pct-yellow">~75%</span>
           </div>
         </div>
-        <p style="font-size:0.75em; color:var(--text-secondary); margin-top:12px; font-style:italic;">
+        <p class="card-note-lg">
           Values prefixed with ~ are approximations. CI injects exact data on each build.
         </p>
       </div>
@@ -525,8 +585,8 @@
     <!-- ============================================================= -->
     <h2 class="section-heading" id="tests">Tests</h2>
 
-    <div class="card" style="margin-bottom:28px;">
-      <h2>Test Results by Package</h2>
+    <div class="card card-spaced">
+      <h3>Test Results by Package</h3>
       <!--
         TODO (CI integration): Populate this table from CI test output.
         In pages.yml, parse test-output.txt to extract per-package test counts:
@@ -538,50 +598,50 @@
           <tr>
             <th>Package</th>
             <th>Description</th>
-            <th style="text-align:right;">Tests</th>
-            <th style="text-align:center;">Status</th>
+            <th class="text-right">Tests</th>
+            <th class="text-center">Status</th>
           </tr>
         </thead>
         <tbody id="test-table-body">
           <tr>
             <td>pkg/types</td>
             <td>Scheme value types</td>
-            <td style="text-align:right;">--</td>
-            <td style="text-align:center; color:var(--green);">PASS</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
           </tr>
           <tr>
             <td>pkg/lexer</td>
             <td>Tokenizer</td>
-            <td style="text-align:right;">--</td>
-            <td style="text-align:center; color:var(--green);">PASS</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
           </tr>
           <tr>
             <td>pkg/parser</td>
             <td>S-expression parser</td>
-            <td style="text-align:right;">--</td>
-            <td style="text-align:center; color:var(--green);">PASS</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
           </tr>
           <tr>
             <td>pkg/env</td>
             <td>Environment (scope chain)</td>
-            <td style="text-align:right;">--</td>
-            <td style="text-align:center; color:var(--green);">PASS</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
           </tr>
           <tr>
             <td>pkg/evaluator</td>
             <td>Evaluator (TCO, macros, exceptions, continuations)</td>
-            <td style="text-align:right;">--</td>
-            <td style="text-align:center; color:var(--green);">PASS</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
           </tr>
           <tr>
             <td>pkg/builtin</td>
             <td>100+ built-in functions</td>
-            <td style="text-align:right;">--</td>
-            <td style="text-align:center; color:var(--green);">PASS</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
           </tr>
         </tbody>
       </table>
-      <p style="font-size:0.75em; color:var(--text-secondary); margin-top:8px; font-style:italic;">
+      <p class="card-note">
         Test counts (--) are populated by CI. Check the
         <a href="https://github.com/suchi/sucheme-go/actions">Actions tab</a>
         for exact results.
@@ -593,46 +653,46 @@
     <!-- ============================================================= -->
     <h2 class="section-heading" id="r7rs">R7RS Compliance</h2>
 
-    <div class="card" style="margin-bottom:28px;">
-      <h2>Overall Compliance</h2>
+    <div class="card card-spaced">
+      <h3>Overall Compliance</h3>
 
       <!-- Counts from docs/r7rs-compliance.md: 81 done, 10 partial, 10 not done = 101 total -->
-      <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap; margin-bottom:12px;">
-        <div style="text-align:center;">
-          <div style="font-size:2.2em; font-weight:700; color:var(--green);">81</div>
-          <div style="font-size:0.8em; color:var(--text-secondary);">Done</div>
+      <div class="r7rs-summary">
+        <div class="r7rs-count">
+          <div class="r7rs-count-value color-green">81</div>
+          <div class="r7rs-count-label">Done</div>
         </div>
-        <div style="text-align:center;">
-          <div style="font-size:2.2em; font-weight:700; color:var(--yellow);">10</div>
-          <div style="font-size:0.8em; color:var(--text-secondary);">Partial</div>
+        <div class="r7rs-count">
+          <div class="r7rs-count-value color-yellow">10</div>
+          <div class="r7rs-count-label">Partial</div>
         </div>
-        <div style="text-align:center;">
-          <div style="font-size:2.2em; font-weight:700; color:var(--red);">10</div>
-          <div style="font-size:0.8em; color:var(--text-secondary);">Not yet</div>
+        <div class="r7rs-count">
+          <div class="r7rs-count-value color-red">10</div>
+          <div class="r7rs-count-label">Not yet</div>
         </div>
-        <div style="flex:1; min-width:200px;">
-          <div style="font-size:0.85em; color:var(--text-secondary); margin-bottom:4px;">Overall progress: 80.2% done / 9.9% partial / 9.9% not yet</div>
+        <div class="r7rs-bar-area">
+          <div class="muted-text" style="margin-bottom:4px;">Overall progress: 80.2% done / 9.9% partial / 9.9% not yet</div>
           <div class="stacked-bar">
             <div class="stacked-done" style="width:80.2%;">80%</div>
             <div class="stacked-partial" style="width:9.9%;">10%</div>
             <div class="stacked-none" style="width:9.9%;">10%</div>
           </div>
           <div class="legend">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--green);"></div> Done</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--yellow);"></div> Partial</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--red);"></div> Not yet</div>
+            <div class="legend-item"><div class="legend-dot bg-green"></div> Done</div>
+            <div class="legend-item"><div class="legend-dot bg-yellow"></div> Partial</div>
+            <div class="legend-item"><div class="legend-dot bg-red"></div> Not yet</div>
           </div>
         </div>
       </div>
 
-      <h3>By Category</h3>
+      <h4>By Category</h4>
       <table>
         <thead>
           <tr>
             <th>Category</th>
-            <th style="text-align:center;">Done</th>
-            <th style="text-align:center;">Partial</th>
-            <th style="text-align:center;">Not yet</th>
+            <th class="text-center">Done</th>
+            <th class="text-center">Partial</th>
+            <th class="text-center">Not yet</th>
             <th>Progress</th>
           </tr>
         </thead>
@@ -640,139 +700,139 @@
           <!-- Data extracted from docs/r7rs-compliance.md -->
           <tr>
             <td>Special forms</td>
-            <td style="text-align:center;">24</td>
-            <td style="text-align:center;">2</td>
-            <td style="text-align:center;">4</td>
+            <td class="text-center">24</td>
+            <td class="text-center">2</td>
+            <td class="text-center">4</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:80%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Exception handling</td>
-            <td style="text-align:center;">7</td>
-            <td style="text-align:center;">0</td>
-            <td style="text-align:center;">0</td>
+            <td class="text-center">7</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:100%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Numerics</td>
-            <td style="text-align:center;">12</td>
-            <td style="text-align:center;">0</td>
-            <td style="text-align:center;">2</td>
+            <td class="text-center">12</td>
+            <td class="text-center">0</td>
+            <td class="text-center">2</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:85.7%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Lists</td>
-            <td style="text-align:center;">10</td>
-            <td style="text-align:center;">3</td>
-            <td style="text-align:center;">0</td>
+            <td class="text-center">10</td>
+            <td class="text-center">3</td>
+            <td class="text-center">0</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:76.9%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Strings</td>
-            <td style="text-align:center;">7</td>
-            <td style="text-align:center;">0</td>
-            <td style="text-align:center;">1</td>
+            <td class="text-center">7</td>
+            <td class="text-center">0</td>
+            <td class="text-center">1</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:87.5%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Characters</td>
-            <td style="text-align:center;">4</td>
-            <td style="text-align:center;">0</td>
-            <td style="text-align:center;">0</td>
+            <td class="text-center">4</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:100%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Vectors</td>
-            <td style="text-align:center;">4</td>
-            <td style="text-align:center;">0</td>
-            <td style="text-align:center;">0</td>
+            <td class="text-center">4</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:100%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Bytevectors</td>
-            <td style="text-align:center;">3</td>
-            <td style="text-align:center;">0</td>
-            <td style="text-align:center;">0</td>
+            <td class="text-center">3</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:100%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Booleans & equality</td>
-            <td style="text-align:center;">4</td>
-            <td style="text-align:center;">0</td>
-            <td style="text-align:center;">0</td>
+            <td class="text-center">4</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:100%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>I/O</td>
-            <td style="text-align:center;">6</td>
-            <td style="text-align:center;">4</td>
-            <td style="text-align:center;">2</td>
+            <td class="text-center">6</td>
+            <td class="text-center">4</td>
+            <td class="text-center">2</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-yellow" style="width:50%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Continuations</td>
-            <td style="text-align:center;">1</td>
-            <td style="text-align:center;">2</td>
-            <td style="text-align:center;">0</td>
+            <td class="text-center">1</td>
+            <td class="text-center">2</td>
+            <td class="text-center">0</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-orange" style="width:33.3%;"></div>
               </div>
             </td>
           </tr>
           <tr>
             <td>Library system</td>
-            <td style="text-align:center;">4</td>
-            <td style="text-align:center;">0</td>
-            <td style="text-align:center;">0</td>
+            <td class="text-center">4</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
             <td>
-              <div class="progress-bar-track" style="height:12px;">
+              <div class="progress-bar-track progress-bar-sm">
                 <div class="progress-bar-fill bar-green" style="width:100%;"></div>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
-      <p style="font-size:0.75em; color:var(--text-secondary); margin-top:8px; font-style:italic;">
+      <p class="card-note">
         Data sourced from <a href="https://github.com/suchi/sucheme-go/blob/main/docs/r7rs-compliance.md">docs/r7rs-compliance.md</a>.
       </p>
     </div>
@@ -782,9 +842,9 @@
     <!-- ============================================================= -->
     <h2 class="section-heading" id="benchmarks">Benchmarks</h2>
 
-    <div class="card" style="margin-bottom:28px;">
-      <h2>Performance Benchmarks</h2>
-      <p style="margin-bottom:12px; font-size:0.9em; color:var(--text-secondary);">
+    <div class="card card-spaced">
+      <h3>Performance Benchmarks</h3>
+      <p class="muted-text bench-desc">
         Benchmarks run on every push. Results available in
         <a href="https://github.com/suchi/sucheme-go/actions/workflows/ci.yml">Actions artifacts</a>.
       </p>
@@ -793,33 +853,33 @@
           <tr>
             <th>Benchmark</th>
             <th>Description</th>
-            <th style="text-align:right;">Typical Time</th>
+            <th class="text-right">Typical Time</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td>BenchmarkTakeuchi</td>
             <td>tak(18, 12, 6) &mdash; classic recursive</td>
-            <td style="text-align:right; color:var(--text-secondary);">--</td>
+            <td class="text-right td-muted">--</td>
           </tr>
           <tr>
             <td>BenchmarkFibonacci</td>
             <td>fib(20) &mdash; naive recursive</td>
-            <td style="text-align:right; color:var(--text-secondary);">--</td>
+            <td class="text-right td-muted">--</td>
           </tr>
           <tr>
             <td>BenchmarkTailRecursion</td>
             <td>100k iteration loop &mdash; TCO verification</td>
-            <td style="text-align:right; color:var(--text-secondary);">--</td>
+            <td class="text-right td-muted">--</td>
           </tr>
           <tr>
             <td>BenchmarkListOperations</td>
             <td>1000 elements list + reverse</td>
-            <td style="text-align:right; color:var(--text-secondary);">--</td>
+            <td class="text-right td-muted">--</td>
           </tr>
         </tbody>
       </table>
-      <p style="font-size:0.75em; color:var(--text-secondary); margin-top:8px; font-style:italic;">
+      <p class="card-note">
         Benchmark times (--) are populated by CI. Download artifacts for exact numbers.
       </p>
     </div>
@@ -829,8 +889,8 @@
     <!-- ============================================================= -->
     <h2 class="section-heading" id="cicd">CI/CD Pipeline</h2>
 
-    <div class="card" style="margin-bottom:28px;">
-      <h2>Pipeline Overview</h2>
+    <div class="card card-spaced">
+      <h3>Pipeline Overview</h3>
       <table>
         <thead>
           <tr>
@@ -889,9 +949,15 @@
       var pct = parseFloat(raw);
       if (isNaN(pct)) pct = 75; // fallback approximation
 
-      // Update stat card
+      // Determine color class based on coverage threshold
+      var colorClass = pct >= 80 ? 'color-green' : pct >= 60 ? 'color-yellow' : pct >= 40 ? 'color-orange' : 'color-red';
+
+      // Update stat card with dynamic color
       var statCov = document.getElementById('stat-coverage');
-      if (statCov) statCov.textContent = pct.toFixed(1) + '%';
+      if (statCov) {
+        statCov.textContent = pct.toFixed(1) + '%';
+        statCov.className = 'stat-value ' + colorClass;
+      }
 
       // Update donut chart
       var donut = document.getElementById('donut-chart');
