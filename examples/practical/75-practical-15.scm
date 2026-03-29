@@ -8,7 +8,7 @@
 (define (trie-set-end! t) (set-cdr! t #t))
 
 (define (char-list str)
-  ; Convert a symbol to a list of characters
+  ; Convert a symbol to a list of characters (string-ref returns characters)
   (let ((s (symbol->string str)))
     (let loop ((i 0))
       (if (= i (string-length s))
