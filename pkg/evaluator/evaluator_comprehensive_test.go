@@ -8,7 +8,7 @@ import (
 )
 
 // =========================================================================
-// letrec* (0% coverage)
+// letrec*
 // =========================================================================
 
 func TestLetrecStar(t *testing.T) {
@@ -60,7 +60,7 @@ func TestLetrecStarInvalidBinding(t *testing.T) {
 }
 
 // =========================================================================
-// apply (9.1% coverage)
+// apply
 // =========================================================================
 
 func TestApplyBasic(t *testing.T) {
@@ -113,7 +113,7 @@ func TestApplyTooFewArgs(t *testing.T) {
 }
 
 // =========================================================================
-// EvalAll (0% coverage)
+// EvalAll
 // =========================================================================
 
 func TestEvalAllBasic(t *testing.T) {
@@ -152,7 +152,7 @@ func TestEvalAllSingle(t *testing.T) {
 }
 
 // =========================================================================
-// Quasiquote coverage (expandQQ 42.9%)
+// Quasiquote coverage for expandQQ
 // =========================================================================
 
 func TestQuasiquoteNested(t *testing.T) {

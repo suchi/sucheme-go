@@ -107,7 +107,10 @@ func TestQuoteNested(t *testing.T) {
 
 func TestQuoteEmptyList(t *testing.T) {
 	v := mustParse(t, "'()")
-	list, _ := v.ToList()
+	list, err := v.ToList()
+	if err != nil {
+		t.Fatalf("ToList failed: %v", err)
+	}
 	if len(list) != 2 || list[0].SymbolVal != "quote" || list[1].Type != types.TypeNil {
 		t.Fatalf("expected (quote ()), got %s", v.String())
 	}
@@ -115,7 +118,13 @@ func TestQuoteEmptyList(t *testing.T) {
 
 func TestQuoteVector(t *testing.T) {
 	v := mustParse(t, "'#(1 2 3)")
-	list, _ := v.ToList()
+	list, err := v.ToList()
+	if err != nil {
+		t.Fatalf("ToList failed: %v", err)
+	}
+	if len(list) < 2 {
+		t.Fatalf("expected at least 2 elements, got %d", len(list))
+	}
 	if list[0].SymbolVal != "quote" || list[1].Type != types.TypeVector {
 		t.Fatalf("expected (quote #(1 2 3)), got %s", v.String())
 	}
@@ -159,6 +168,9 @@ func TestBytevectorEmpty(t *testing.T) {
 
 func TestBytevectorBoundary(t *testing.T) {
 	v := mustParse(t, "#u8(0 255)")
+	if v.Type != types.TypeBytevector || len(v.ByteVec) < 2 {
+		t.Fatalf("expected bytevector of length >= 2, got type=%s len=%d", v.Type, len(v.ByteVec))
+	}
 	if v.ByteVec[0] != 0 || v.ByteVec[1] != 255 {
 		t.Fatal("bytevector boundary values mismatch")
 	}

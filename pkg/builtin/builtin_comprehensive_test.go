@@ -8,7 +8,7 @@ import (
 )
 
 // =========================================================================
-// String operations (42.8% coverage - many uncovered)
+// String operations
 // =========================================================================
 
 func TestNumberToString(t *testing.T) {
@@ -256,7 +256,7 @@ func TestStringAppendTypeError(t *testing.T) {
 }
 
 // =========================================================================
-// Type predicates (63.9% coverage)
+// Type predicates
 // =========================================================================
 
 func TestProcedurePredicate(t *testing.T) {
@@ -302,7 +302,7 @@ func TestVoidPredicate(t *testing.T) {
 }
 
 // =========================================================================
-// Comparison operations (65.1% coverage)
+// Comparison operations
 // =========================================================================
 
 func TestGreaterThan(t *testing.T) {
@@ -414,7 +414,7 @@ func TestDivFloatByZero(t *testing.T) {
 }
 
 // =========================================================================
-// Vector edge cases (69.5% coverage)
+// Vector edge cases
 // =========================================================================
 
 func TestVectorLength(t *testing.T) {
@@ -464,7 +464,7 @@ func TestMakeVectorNoFill(t *testing.T) {
 }
 
 // =========================================================================
-// Bytevector edge cases (66.7% coverage)
+// Bytevector edge cases
 // =========================================================================
 
 func TestBytevectorLength(t *testing.T) {
@@ -533,7 +533,7 @@ func TestBytevectorAppendEmpty(t *testing.T) {
 }
 
 // =========================================================================
-// I/O operations (40% coverage)
+// I/O operations
 // =========================================================================
 
 func TestNewline(t *testing.T) {
