@@ -813,10 +813,12 @@ func TestReadFromStringPortEOF(t *testing.T) {
 	}
 }
 
-func TestReadNoPortError(t *testing.T) {
-	err := evalErr(t, "(read)")
-	if err == nil {
-		t.Errorf("expected error for (read) without port, got nil")
+func TestReadNoArgReturnsEof(t *testing.T) {
+	// (read) with no args uses current-input-port which is an empty stdin port
+	e := setupEval()
+	r := evalWithEnv(t, "(read)", e)
+	if r.Type != types.TypeEof {
+		t.Errorf("expected eof from (read) on empty stdin, got %s", r.Type)
 	}
 }
 

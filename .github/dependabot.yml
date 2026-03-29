@@ -1,5 +1,4 @@
-# Dependabot configuration with cooldown to mitigate supply chain attacks.
-# Do NOT auto-merge or immediately update dependencies.
+# Dependabot configuration for dependency updates.
 # All updates go through PR review before merging.
 
 version: 2
@@ -8,11 +7,6 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    # Cooldown: only open PRs for versions published >= 3 days ago.
-    # This gives the community time to detect malicious releases.
-    cooldown:
-      default: 3
-      semver-major: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -20,18 +14,11 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
-    # Limit to security updates only for maximum safety
-    # Remove this line if you want feature updates too
-    # allow:
-    #   - dependency-type: "direct"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
-    cooldown:
-      default: 3
-      semver-major: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
