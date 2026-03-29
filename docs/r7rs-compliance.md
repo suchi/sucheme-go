@@ -6,10 +6,12 @@ Sucheme の R7RS (Revised⁷ Report on the Algorithmic Language Scheme) 準拠�
 
 ```mermaid
 pie title R7RS 対応状況
-    "対応完了" : 95
-    "部分対応" : 7
+    "対応完了" : 93
+    "部分対応" : 6
     "未対応" : 3
 ```
+
+> **集計ルール**: 上記の件数は各識別子を一意にカウントした結果（合計 102）。`dynamic-wind` は「特殊形式」と「継続」、`define-library`/`import` は「特殊形式」と「ライブラリシステム」の両セクションに記載されているが、集計では各1件としてカウント。
 
 ## 判定基準
 
