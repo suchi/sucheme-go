@@ -1,5 +1,5 @@
 ; 76: Simple Test Framework
-; A lightweight testing framework using closures and continuations.
+; A lightweight testing framework using closures and mutation.
 
 (define *test-pass* 0)
 (define *test-fail* 0)

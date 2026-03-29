@@ -1,6 +1,6 @@
 ; 91: N-Queens Problem
 ; Place N queens on an NxN chessboard so that no two queens attack each other.
-; Uses backtracking with tail-call optimization.
+; Uses backtracking with recursive search.
 
 (define (queens n)
   (define (safe? col row placed)
