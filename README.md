@@ -87,9 +87,36 @@ sucheme --version            # バージョン表示
 
 ## ビルド方法
 
+### ネイティブビルド
+
 ```bash
-go build -o sucheme ./cmd/sucheme/          # ネイティブビルド
-GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/  # WASM
+# Linux / macOS
+go build -o sucheme ./cmd/sucheme/
+
+# Windows (cmd / PowerShell)
+go build -o sucheme.exe ./cmd/sucheme/
+```
+
+> **Note**: `go install` を使う場合は OS に応じた拡張子が自動付与されるため、`go install github.com/suchi/sucheme-go/cmd/sucheme@latest` がどのプラットフォームでも動作します。
+
+### WASM ビルド
+
+```bash
+# Linux / macOS
+GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
+
+# Windows (PowerShell)
+$env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
+
+# Windows (cmd)
+set GOOS=js&& set GOARCH=wasm&& go build -o web-ui/sucheme.wasm ./cmd/wasm/
+```
+
+> **Note**: Windows では Git Bash や WSL を使えば Linux と同じコマンドが使えます。
+
+### テスト・ベンチマーク
+
+```bash
 go test ./...                                 # テスト
 go test -bench=. -benchmem ./pkg/evaluator/   # ベンチマーク
 go test -coverprofile=coverage.out ./...      # カバレッジ

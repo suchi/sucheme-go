@@ -51,8 +51,14 @@ go test -bench=. ./...                   # ベンチマーク
 ## ビルド
 
 ```bash
-go build -o sucheme ./cmd/sucheme       # ネイティブビルド
-GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm  # WASMビルド
+# ネイティブビルド
+go build -o sucheme ./cmd/sucheme           # Linux / macOS
+go build -o sucheme.exe ./cmd/sucheme       # Windows
+
+# WASMビルド（Linux / macOS）
+GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm
+# WASMビルド（Windows PowerShell）
+# $env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm
 ```
 
 ## 品質チェック
