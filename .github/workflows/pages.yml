@@ -48,9 +48,9 @@ jobs:
       - name: Build dashboard with CI data
         run: |
           cp web-ui/dashboard.html web-ui/dist/dashboard.html
-          # Inject build timestamp
+          # Inject build timestamp (target only the visible text, not JS detection code)
           TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
-          sed -i "s/__BUILD_TIMESTAMP__/$TIMESTAMP/g" web-ui/dist/dashboard.html
+          sed -i "s/Last build: __BUILD_TIMESTAMP__/Last build: $TIMESTAMP/" web-ui/dist/dashboard.html
           # Inject overall coverage percentage
           if [ -f coverage.out ]; then
             COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')

@@ -264,7 +264,7 @@
     .color-orange { color: var(--orange); }
     .color-red    { color: var(--red); }
 
-    /* ===== CSS-only donut chart ===== */
+    /* ===== Donut chart (CSS conic-gradient, set dynamically via minimal JS) ===== */
     .donut-container {
       display: flex;
       flex-direction: column;
@@ -943,32 +943,39 @@
   <!-- ===== Minimal JS for dynamic donut chart ===== -->
   <script>
     (function() {
-      // Overall coverage percentage (approx. default; CI should replace __COVERAGE_PCT__)
-      // TODO (CI integration): In pages.yml, replace __COVERAGE_PCT__ with real value.
+      // Overall coverage percentage.
+      // CI replaces __COVERAGE_PCT__ with the real value in pages.yml.
+      // Uses conic-gradient (CSS) with minimal JS to set the dynamic value.
       var raw = '__COVERAGE_PCT__';
       var pct = parseFloat(raw);
-      if (isNaN(pct)) pct = 75; // fallback approximation
+      var isValid = !isNaN(pct);
 
-      // Determine color class based on coverage threshold
-      var colorClass = pct >= 80 ? 'color-green' : pct >= 60 ? 'color-yellow' : pct >= 40 ? 'color-orange' : 'color-red';
+      // Clamp to 0-100 range for safe rendering
+      if (isValid) pct = Math.max(0, Math.min(100, pct));
 
-      // Update stat card with dynamic color
-      var statCov = document.getElementById('stat-coverage');
-      if (statCov) {
-        statCov.textContent = pct.toFixed(1) + '%';
-        statCov.className = 'stat-value ' + colorClass;
+      if (isValid) {
+        // Determine color class based on coverage threshold
+        var colorClass = pct >= 80 ? 'color-green' : pct >= 60 ? 'color-yellow' : pct >= 40 ? 'color-orange' : 'color-red';
+
+        // Update stat card with dynamic color
+        var statCov = document.getElementById('stat-coverage');
+        if (statCov) {
+          statCov.textContent = pct.toFixed(1) + '%';
+          statCov.className = 'stat-value ' + colorClass;
+        }
+
+        // Update donut chart (CSS conic-gradient, set dynamically via JS)
+        var donut = document.getElementById('donut-chart');
+        var donutPct = document.getElementById('donut-pct');
+        if (donut) {
+          var color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : pct >= 40 ? 'var(--orange)' : 'var(--red)';
+          donut.style.background = 'conic-gradient(' + color + ' 0% ' + pct + '%, var(--bar-track) ' + pct + '% 100%)';
+        }
+        if (donutPct) donutPct.textContent = pct.toFixed(1) + '%';
       }
+      // If coverage value was not injected by CI, leave display as '--' (default)
 
-      // Update donut chart
-      var donut = document.getElementById('donut-chart');
-      var donutPct = document.getElementById('donut-pct');
-      if (donut) {
-        var color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : pct >= 40 ? 'var(--orange)' : 'var(--red)';
-        donut.style.background = 'conic-gradient(' + color + ' 0% ' + pct + '%, var(--bar-track) ' + pct + '% 100%)';
-      }
-      if (donutPct) donutPct.textContent = pct.toFixed(1) + '%';
-
-      // Timestamp display
+      // Timestamp: detect if CI did not replace the placeholder
       var tsEl = document.getElementById('build-timestamp');
       if (tsEl && tsEl.textContent.indexOf('__BUILD_TIMESTAMP__') !== -1) {
         tsEl.textContent = 'Last build: (local preview)';
