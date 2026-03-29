@@ -184,6 +184,6 @@ R7RS 準拠強化、テスト拡充、ダッシュボード改善、将来ロー
 | 1-C | CLI readline | feat/cli-readline | #19 | 完了 |
 | 1-D | Web UI 強化 | feat/web-ui-enhancements | #20 | 完了 |
 | 1-E | ダッシュボード | feat/dashboard-v2 | #22 | 完了 |
-| 2-A | R7RS 準拠 | claude/finish-dashboard-tutorials-0hqce | #26 | 完了 |
+| 2-A | R7RS 準拠 | feat/r7rs-compliance | #26 | 完了 |
 | 3-A | テスト強化 | test/comprehensive-coverage | - | 待機中 |
 | 4-A | ロードマップ | docs/enhancement-roadmap | - | 待機中 |
