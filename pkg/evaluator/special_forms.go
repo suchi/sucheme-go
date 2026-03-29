@@ -4,12 +4,9 @@ package evaluator
 
 import (
 	"fmt"
-	"os"
-	"strings"
 	"sync/atomic"
 
 	"github.com/suchi/sucheme-go/pkg/env"
-	"github.com/suchi/sucheme-go/pkg/parser"
 	"github.com/suchi/sucheme-go/pkg/types"
 )
 
@@ -67,12 +64,18 @@ func evalDefineRecordType(expr *types.Value, e *env.Env) (*evalResult, error) {
 		return nil, fmt.Errorf("define-record-type: constructor name must be a symbol")
 	}
 	ctorName := ctorParts[0].SymbolVal
-	ctorFields := make([]string, len(ctorParts)-1)
+	ctorFields := make([]string, 0, len(ctorParts)-1)
+	seenCtorFields := make(map[string]struct{}, len(ctorParts)-1)
 	for i := 1; i < len(ctorParts); i++ {
 		if ctorParts[i].Type != types.TypeSymbol {
 			return nil, fmt.Errorf("define-record-type: constructor field name must be a symbol")
 		}
-		ctorFields[i-1] = ctorParts[i].SymbolVal
+		fieldName := ctorParts[i].SymbolVal
+		if _, exists := seenCtorFields[fieldName]; exists {
+			return nil, fmt.Errorf("define-record-type: duplicate constructor field name: %s", fieldName)
+		}
+		seenCtorFields[fieldName] = struct{}{}
+		ctorFields = append(ctorFields, fieldName)
 	}
 
 	// 3. Parse predicate
@@ -395,58 +398,8 @@ func evalDefineValues(expr *types.Value, e *env.Env) (*evalResult, error) {
 // ---------------------------------------------------------------------------
 // include / include-ci
 // ---------------------------------------------------------------------------
-
-// evalInclude implements R7RS include and include-ci.
-// For include-ci, identifiers in the source are folded to lowercase.
-//
-// NOTE: R7RS requires case-folding only for identifiers. This implementation
-// folds the entire source including string/character literals, which is
-// non-conformant. This is a known limitation.
-//
-// SECURITY: include reads files from the filesystem using os.ReadFile on
-// arbitrary paths. In untrusted evaluation contexts, this could allow reading
-// arbitrary host files. Consider restricting allowed paths in
-// security-sensitive deployments. In WASM builds, filesystem access is
-// restricted by the runtime sandbox.
-func evalInclude(expr *types.Value, e *env.Env, caseInsensitive bool) (*evalResult, error) {
-	args, err := listArgs(expr)
-	if err != nil || len(args) == 0 {
-		return nil, fmt.Errorf("include: requires at least one filename")
-	}
-
-	var lastResult *types.Value = types.Void()
-
-	for _, arg := range args {
-		if arg.Type != types.TypeString {
-			return nil, fmt.Errorf("include: filename must be a string")
-		}
-		filename := arg.StrVal
-
-		data, err := os.ReadFile(filename)
-		if err != nil {
-			return nil, fmt.Errorf("include: %w", err)
-		}
-
-		source := string(data)
-		if caseInsensitive {
-			source = strings.ToLower(source)
-		}
-
-		exprs, err := parser.ParseAllString(source)
-		if err != nil {
-			return nil, fmt.Errorf("include: parse error in %s: %w", filename, err)
-		}
-
-		for _, ex := range exprs {
-			lastResult, err = Eval(ex, e)
-			if err != nil {
-				return nil, fmt.Errorf("include: error in %s: %w", filename, err)
-			}
-		}
-	}
-
-	return resultVal(lastResult), nil
-}
+// evalInclude is defined in include.go (non-WASM) and include_wasm.go (WASM).
+// See those files for build-tag-guarded implementations.
 
 // ---------------------------------------------------------------------------
 // case

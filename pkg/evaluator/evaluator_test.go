@@ -1,6 +1,8 @@
 package evaluator
 
 import (
+	"fmt"
+	"os"
 	"testing"
 
 	"github.com/suchi/sucheme-go/pkg/builtin"
@@ -808,5 +810,106 @@ func TestReadFromStringPortEOF(t *testing.T) {
 	r := evalWithEnv(t, `(read (open-input-string ""))`, e)
 	if r.Type != types.TypeEof {
 		t.Errorf("expected eof, got %s", r.Type)
+	}
+}
+
+func TestReadNoPortError(t *testing.T) {
+	err := evalErr(t, "(read)")
+	if err == nil {
+		t.Errorf("expected error for (read) without port, got nil")
+	}
+}
+
+func TestReadArityError(t *testing.T) {
+	err := evalErr(t, `(read (open-input-string "a") (open-input-string "b"))`)
+	if err == nil {
+		t.Errorf("expected error for (read) with too many arguments")
+	}
+}
+
+func TestCurrentInputPortIsPort(t *testing.T) {
+	e := setupEval()
+	r := evalWithEnv(t, "(port? (current-input-port))", e)
+	if r.Type != types.TypeBoolean || !r.BoolVal {
+		t.Errorf("expected (port? (current-input-port)) to be #t, got %v", r)
+	}
+}
+
+func TestCurrentOutputPortIsPort(t *testing.T) {
+	e := setupEval()
+	r := evalWithEnv(t, "(port? (current-output-port))", e)
+	if r.Type != types.TypeBoolean || !r.BoolVal {
+		t.Errorf("expected (port? (current-output-port)) to be #t, got %v", r)
+	}
+}
+
+func TestReadFromStringPortList(t *testing.T) {
+	e := setupEval()
+	r := evalWithEnv(t, `(read (open-input-string "(1 2 3)"))`, e)
+	if r.Type != types.TypePair {
+		t.Errorf("expected pair, got %s", r.Type)
+	}
+}
+
+// =========================================================================
+// include / include-ci tests
+// =========================================================================
+
+func TestInclude(t *testing.T) {
+	// Create a temp file with Scheme code
+	tmpDir := t.TempDir()
+	tmpFile := tmpDir + "/test-include.scm"
+	if err := os.WriteFile(tmpFile, []byte("(define include-test-var 42)"), 0644); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	e := setupEval()
+	evalWithEnv(t, fmt.Sprintf(`(include %q)`, tmpFile), e)
+	r := evalWithEnv(t, "include-test-var", e)
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected 42, got %v", r)
+	}
+}
+
+func TestIncludeMultipleExpressions(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpFile := tmpDir + "/test-multi.scm"
+	if err := os.WriteFile(tmpFile, []byte("(define a 10) (define b 20)"), 0644); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	e := setupEval()
+	evalWithEnv(t, fmt.Sprintf(`(include %q)`, tmpFile), e)
+	r := evalWithEnv(t, "(+ a b)", e)
+	if r.Type != types.TypeInteger || r.IntVal != 30 {
+		t.Errorf("expected 30, got %v", r)
+	}
+}
+
+func TestIncludeFileNotFound(t *testing.T) {
+	err := evalErr(t, `(include "/nonexistent/file.scm")`)
+	if err == nil {
+		t.Errorf("expected error for include of nonexistent file")
+	}
+}
+
+func TestIncludeCi(t *testing.T) {
+	tmpDir := t.TempDir()
+	tmpFile := tmpDir + "/test-ci.scm"
+	// include-ci should fold identifiers to lowercase
+	if err := os.WriteFile(tmpFile, []byte("(define CI-TEST-VAR 99)"), 0644); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	e := setupEval()
+	evalWithEnv(t, fmt.Sprintf(`(include-ci %q)`, tmpFile), e)
+	// After case-folding, CI-TEST-VAR becomes ci-test-var
+	r := evalWithEnv(t, "ci-test-var", e)
+	if r.Type != types.TypeInteger || r.IntVal != 99 {
+		t.Errorf("expected 99, got %v", r)
+	}
+}
+
+func TestDefineRecordTypeDuplicateCtorField(t *testing.T) {
+	err := evalErr(t, `(define-record-type <dup> (make-dup x x) dup? (x dup-x))`)
+	if err == nil {
+		t.Errorf("expected error for duplicate constructor field name")
 	}
 }
