@@ -188,8 +188,11 @@
     // =========================================================================
     // Syntax Highlighting
     // =========================================================================
+    // Scheme keywords for syntax highlighting.
+    // We use a delimiter-aware pattern since Scheme identifiers can contain
+    // special chars like ?, !, *, -, / that break \b word boundaries.
     var SCHEME_KEYWORDS = [
-        "define", "lambda", "if", "cond", "else", "let", "let\\*", "letrec",
+        "define", "lambda", "if", "cond", "else", "let\\*", "letrec", "let",
         "begin", "set!", "quote", "and", "or", "not", "when", "unless",
         "do", "case", "define-syntax", "syntax-rules", "define-record-type",
         "import", "export", "library", "values", "call-with-current-continuation",
@@ -199,9 +202,27 @@
         "eq\\?", "eqv\\?", "equal\\?"
     ];
 
+    // Scheme delimiters: whitespace, parens, brackets, quotes, comma, semicolon, start/end
+    // We capture the keyword in group 1 and use a replacement function to preserve context.
+    var SCHEME_DELIM = "[\\s()\\[\\]'`,;]";
     var keywordPattern = new RegExp(
-        "\\b(" + SCHEME_KEYWORDS.join("|") + ")\\b", "g"
+        "(?:^|(?<=" + SCHEME_DELIM + "))(" +
+        SCHEME_KEYWORDS.join("|") +
+        ")(?=" + SCHEME_DELIM + "|$)", "g"
     );
+    var keywordUsesLookbehind = true;
+    // Fallback for browsers without lookbehind support
+    try {
+        keywordPattern.test("");
+    } catch (e) {
+        // Capture preceding delimiter in group 1, keyword in group 2
+        keywordPattern = new RegExp(
+            "(^|" + SCHEME_DELIM + ")(" +
+            SCHEME_KEYWORDS.join("|") +
+            ")(?=" + SCHEME_DELIM + "|$)", "g"
+        );
+        keywordUsesLookbehind = false;
+    }
 
     // Pattern for strings, comments, numbers, and booleans
     var stringPattern = /"(?:[^"\\]|\\.)*"/g;
@@ -265,9 +286,16 @@
         });
 
         // Highlight keywords
-        escaped = escaped.replace(keywordPattern, function (match) {
-            return '<span class="hl-keyword">' + match + '</span>';
-        });
+        if (keywordUsesLookbehind) {
+            escaped = escaped.replace(keywordPattern, function (match, kw) {
+                return '<span class="hl-keyword">' + kw + '</span>';
+            });
+        } else {
+            // Fallback: group 1 is the preceding delimiter, group 2 is the keyword
+            escaped = escaped.replace(keywordPattern, function (match, prefix, kw) {
+                return prefix + '<span class="hl-keyword">' + kw + '</span>';
+            });
+        }
 
         // Restore protected regions
         for (var i = 0; i < regions.length; i++) {
@@ -728,8 +756,8 @@
             }
         });
 
-        // Global font size shortcuts
-        document.addEventListener("keydown", function (e) {
+        // Font size shortcuts (only when REPL input is focused, to not steal browser zoom)
+        inputEl.addEventListener("keydown", function (e) {
             if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
                 e.preventDefault();
                 increaseFontSize();
