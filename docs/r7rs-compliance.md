@@ -6,9 +6,9 @@ Sucheme の R7RS (Revised⁷ Report on the Algorithmic Language Scheme) 準拠�
 
 ```mermaid
 pie title R7RS 対応状況
-    "対応完了" : 60
+    "対応完了" : 81
     "部分対応" : 10
-    "未対応" : 30
+    "未対応" : 10
 ```
 
 ## 判定基準
@@ -47,8 +47,8 @@ pie title R7RS 対応状況
 | `case-lambda` | 対応完了 | TCO維持 |
 | `define-values` | 未対応 | |
 | `define-record-type` | 未対応 | |
-| `define-library` | 未対応 | |
-| `import` | 未対応 | |
+| `define-library` | 対応完了 | export (rename含む)、begin、import |
+| `import` | 対応完了 | only、except、prefix、rename |
 | `include` | 未対応 | |
 | `include-ci` | 未対応 | |
 | `cond-expand` | 未対応 | |
