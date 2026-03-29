@@ -104,11 +104,20 @@ go build -o sucheme.exe ./cmd/sucheme/
 ```bash
 # Linux / macOS
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
+# wasm_exec.js をコピー（Go バージョンにより場所が異なる）
+cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/ 2>/dev/null || \
+  cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
 ```
 
 ```powershell
 # Windows (PowerShell)
 $env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
+$goRoot = go env GOROOT
+if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/misc/wasm/wasm_exec.js" web-ui/
+} elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
+}
 ```
 
 ```bat
@@ -116,7 +125,7 @@ rem Windows (cmd)
 set GOOS=js&& set GOARCH=wasm&& go build -o web-ui/sucheme.wasm ./cmd/wasm/
 ```
 
-> **注**: Windows では Git Bash や WSL を使えば Linux と同じコマンドが使えます。
+> **注**: Windows では Git Bash や WSL を使えば Linux と同じコマンドが使えます。ローカルで Web UI を確認するには HTTP サーバー（例: `cd web-ui && python3 -m http.server 8080`）を起動してブラウザでアクセスしてください。
 
 ### テスト・ベンチマーク
 

@@ -658,7 +658,12 @@ R7RS の `define-library` でモジュールを定義できます。
 ```bash
 # WASM ビルド（Linux / macOS）
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
-cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+# wasm_exec.js の場所は Go バージョンにより異なる
+if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
+  cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
+  cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
+fi
 
 # HTTP サーバーで配信
 # 注: .wasm の MIME タイプ (application/wasm) が必要です。
