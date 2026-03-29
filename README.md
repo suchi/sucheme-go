@@ -117,6 +117,9 @@ if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
     Copy-Item "$goRoot/misc/wasm/wasm_exec.js" web-ui/
 } elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
     Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
+} else {
+    Write-Error "wasm_exec.js not found in '$goRoot\misc\wasm' or '$goRoot\lib\wasm'."
+    exit 1
 }
 ```
 
@@ -130,6 +133,8 @@ if exist "%GOROOT%\misc\wasm\wasm_exec.js" (
   copy "%GOROOT%\misc\wasm\wasm_exec.js" web-ui\
 ) else if exist "%GOROOT%\lib\wasm\wasm_exec.js" (
   copy "%GOROOT%\lib\wasm\wasm_exec.js" web-ui\
+) else (
+  echo wasm_exec.js not found under "%GOROOT%\misc\wasm" or "%GOROOT%\lib\wasm" 1>&2
 )
 ```
 

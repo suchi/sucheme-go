@@ -118,7 +118,7 @@ if (Test-Path $wasmExecMisc) {
 } elseif (Test-Path $wasmExecLib) {
     Copy-Item $wasmExecLib web-ui/
 } else {
-    Write-Error "wasm_exec.js not found under Go root."
+    throw "wasm_exec.js not found under Go root."
 }
 
 # ローカル HTTP サーバを起動
@@ -600,7 +600,7 @@ if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
 } elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
     Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
 } else {
-    Write-Error "wasm_exec.js not found in $goRoot/misc/wasm or $goRoot/lib/wasm."
+    throw "wasm_exec.js not found in $goRoot/misc/wasm or $goRoot/lib/wasm."
 }
 ```
 
