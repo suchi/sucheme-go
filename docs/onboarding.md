@@ -925,6 +925,9 @@ if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
   cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
 elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
   cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
+else
+  echo "wasm_exec.js not found under GOROOT (checked misc/wasm and lib/wasm)" >&2
+  exit 1
 fi
 # Windows (PowerShell) の場合:
 # $goRoot = go env GOROOT
