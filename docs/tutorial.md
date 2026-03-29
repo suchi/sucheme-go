@@ -126,8 +126,8 @@ sucheme> (quote (a b))  ; quote の明示的な使用
 ```scheme
 (define x 10)
 (define greeting "Hello")
-(display x)        ; => 10
-(display greeting) ; => Hello
+(display x)        ; 出力: 10
+(display greeting) ; 出力: Hello
 ```
 
 ### 関数定義
@@ -435,8 +435,8 @@ Sucheme はトランポリン方式の末尾呼び出し最適化 (TCO) を実�
 (define x 1)
 (define y 2)
 (swap! x y)
-(display x) ; => 2
-(display y) ; => 1
+(display x) ; 出力: 2
+(display y) ; 出力: 1
 ```
 
 ### while ループマクロ
@@ -507,12 +507,12 @@ Sucheme はトランポリン方式の末尾呼び出し最適化 (TCO) を実�
 ```scheme
 (define current-lang (make-parameter "en"))
 
-(display (current-lang)) ; => "en"
+(display (current-lang)) ; 出力: en
 
 (parameterize ((current-lang "ja"))
-  (display (current-lang))) ; => "ja"
+  (display (current-lang))) ; 出力: ja
 
-(display (current-lang)) ; => "en"（元に戻る）
+(display (current-lang)) ; 出力: en（元に戻る）
 ```
 
 ネストも可能です:
@@ -521,10 +521,10 @@ Sucheme はトランポリン方式の末尾呼び出し最適化 (TCO) を実�
 (define indent (make-parameter 0))
 
 (parameterize ((indent 2))
-  (display (indent)) ; => 2
+  (display (indent)) ; 出力: 2
   (parameterize ((indent 4))
-    (display (indent))) ; => 4
-  (display (indent))) ; => 2
+    (display (indent))) ; 出力: 4
+  (display (indent))) ; 出力: 2
 ```
 
 ---
