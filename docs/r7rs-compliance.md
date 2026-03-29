@@ -6,12 +6,12 @@ Sucheme の R7RS (Revised⁷ Report on the Algorithmic Language Scheme) 準拠�
 
 ```mermaid
 pie title R7RS 対応状況
-    "対応完了" : 93
-    "部分対応" : 6
+    "対応完了" : 92
+    "部分対応" : 7
     "未対応" : 3
 ```
 
-> **集計ルール**: 上記の件数は表の各項目（行）を一意にカウントした結果（合計 102）。`dynamic-wind` は「特殊形式」と「継続」、`define-library`/`import` は「特殊形式」と「ライブラリシステム」の両セクションに記載されているが、集計では各1件としてカウント。
+> **集計ルール**: 上記の件数は表の各項目（行）を一意にカウントした結果（合計 102）。`dynamic-wind` は「特殊形式」と「継続」、`define-library`/`import` は「特殊形式」と「ライブラリシステム」の両セクションに記載されているが、集計では各1件としてカウント。表の行数を単純に合計した値とは一致しない場合がある。
 
 ## 判定基準
 
@@ -52,7 +52,7 @@ pie title R7RS 対応状況
 | `define-library` | 対応完了 | export (rename含む)、begin、import |
 | `import` | 対応完了 | only、except、prefix、rename |
 | `include` | 対応完了 | ファイル読み込み・評価（WASM非対応） |
-| `include-ci` | 対応完了 | 大文字小文字無視モード（WASM非対応） |
+| `include-ci` | 部分対応 | 大文字小文字無視モード（WASM非対応）。現在の実装はソース全体を小文字化しており、R7RS が要求する識別子のみのケースフォールドに非準拠 |
 | `cond-expand` | 対応完了 | `r7rs`, `sucheme`, `and`/`or`/`not`/`library` |
 | `parameterize` | 対応完了 | `make-parameter` + 動的バインディングスタック |
 | `dynamic-wind` | 部分対応 | escape continuation で before/after 実行。re-entrant 時の再入は未対応 |

@@ -187,3 +187,5 @@ R7RS 準拠強化、テスト拡充、ダッシュボード改善、将来ロー
 | 2-A | R7RS 準拠 | feat/r7rs-compliance | #26 | 完了 |
 | 3-A | テスト強化 | test/comprehensive-coverage | - | 待機中 |
 | 4-A | ロードマップ | docs/enhancement-roadmap | - | 待機中 |
+
+> 注記: Round 2-A（R7RS 準拠）は PR #26 で実装済みです。Task 2-A セクションにある「未対応→実装対象/部分対応→完全対応」の表は、実装前の計画を示す履歴として保持しています。
