@@ -178,10 +178,14 @@ sucheme-go/
 │   ├── strings/           #   文字列処理
 │   └── *.scm              #   ルート直下のクラシック例（factorial, fibonacci, tak 等）
 ├── docs/                  # ドキュメント
-│   ├── adr/               #   Architecture Decision Records (3件)
-│   ├── architecture-plan.md
+│   ├── adr/               #   Architecture Decision Records (10件)
+│   ├── plans/             #   計画ドキュメント
+│   │   ├── architecture-plan.md
+│   │   ├── phase4-plan.md
+│   │   ├── ci-fix-plan.md
+│   │   └── feedback-plan-2026-03-29.md
 │   ├── r7rs-compliance.md
-│   ├── phase4-plan.md
+│   ├── CHANGELOG.md       #   開発履歴（時系列）
 │   └── onboarding.md      #   このファイル
 ├── .github/workflows/     # CI/CD
 │   ├── ci.yml             #   テスト(3OS)、カバレッジ、ベンチマーク、WASM ビルド
@@ -366,7 +370,7 @@ Scheme の値はすべて `*types.Value` で表現されます。タグ付きユ
 | `types.Nil()` | 空リスト |
 | `types.Void()` | void（副作用のみの式の戻り値） |
 
-詳細は [docs/architecture-plan.md](architecture-plan.md) を参照してください。
+詳細は [docs/plans/architecture-plan.md](plans/architecture-plan.md) を参照してください。
 
 ---
 
@@ -976,10 +980,11 @@ fi
 | ドキュメント | 内容 |
 |-------------|------|
 | [CLAUDE.md](../CLAUDE.md) | Claude Code インストラクション（完全版ルール） |
-| [architecture-plan.md](architecture-plan.md) | 技術設計プラン（型システム、評価器設計、CPS 将来計画） |
+| [plans/architecture-plan.md](plans/architecture-plan.md) | 技術設計プラン（型システム、評価器設計、CPS 将来計画） |
 | [r7rs-compliance.md](r7rs-compliance.md) | R7RS 対応状況（機能ごとの詳細な対応表） |
-| [phase4-plan.md](phase4-plan.md) | Phase 4 実装戦略 |
-| [adr/](adr/) | Architecture Decision Records (3件) |
+| [plans/phase4-plan.md](plans/phase4-plan.md) | Phase 4 実装戦略 |
+| [adr/](adr/) | Architecture Decision Records (10件) |
+| [CHANGELOG.md](CHANGELOG.md) | 開発履歴（時系列、PRリンク付き） |
 | [SOW.md](../SOW.md) | Statement of Work |
 | [README.md](../README.md) | プロジェクト概要、クイックスタート、サンプルコード |
 | [.github/copilot-instructions.md](../.github/copilot-instructions.md) | GitHub Copilot 向けインストラクション |

@@ -1,6 +1,10 @@
 # ADR-005: GitHub Copilot レビュールール厳守の教訓
 
-## ステータス: 承認済み
+| 項目 | 値 |
+|------|-----|
+| 決定日 | 2026-03-28 |
+| ステータス | 承認済み（有効） |
+| 発生契機 | [PR #6](https://github.com/suchi/sucheme-go/pull/6), [PR #7](https://github.com/suchi/sucheme-go/pull/7) でのインシデント |
 
 ## 背景
 

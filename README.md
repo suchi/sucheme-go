@@ -165,11 +165,11 @@ sucheme-go/
 ├── web-ui/            # Web REPL UI（HTML/CSS/JS）
 ├── examples/          # 104個のサンプルプログラム（10カテゴリ）
 ├── docs/              # ドキュメント
-│   ├── adr/           # Architecture Decision Records
-│   ├── architecture-plan.md
+│   ├── adr/           # Architecture Decision Records (10件)
+│   ├── plans/         # 計画ドキュメント
 │   ├── r7rs-compliance.md  # R7RS対応状況（詳細版）
-│   ├── onboarding.md       # 開発者オンボーディング
-│   └── phase4-plan.md      # Phase 4 実装戦略
+│   ├── CHANGELOG.md        # 開発履歴（時系列）
+│   └── onboarding.md       # 開発者オンボーディング
 ├── .github/workflows/ # CI/CD（テスト, ベンチマーク, Pages, Release）
 ├── CLAUDE.md          # Claude Code インストラクション
 └── SOW.md             # Statement of Work
@@ -258,11 +258,12 @@ sucheme-go/
 
 ## ドキュメント
 
+- [開発履歴](docs/CHANGELOG.md) — 時系列の開発経緯（PRリンク付き）
 - [R7RS 対応状況](docs/r7rs-compliance.md) — 機能ごとの対応状況
 - [オンボーディング](docs/onboarding.md) — 開発者向けガイド
-- [アーキテクチャ設計](docs/architecture-plan.md) — 技術設計プラン
-- [Phase 4 計画](docs/phase4-plan.md) — 残りの実装戦略
-- [ADR](docs/adr/) — Architecture Decision Records
+- [アーキテクチャ設計](docs/plans/architecture-plan.md) — 技術設計プラン
+- [ADR](docs/adr/) — Architecture Decision Records (10件)
+- [エンハンスロードマップ](docs/enhancement-roadmap.md) — 将来の機能候補30件
 - [SOW](SOW.md) — 作業範囲記述書
 - [サンプル](examples/) — 104個の Scheme プログラム
 
