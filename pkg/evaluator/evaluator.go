@@ -130,6 +130,18 @@ func evalList(expr *types.Value, e *env.Env) (*evalResult, error) {
 			return evalDefineLibrary(expr, e)
 		case "import":
 			return evalImport(expr, e)
+		case "case":
+			return evalCase(expr, e)
+		case "define-record-type":
+			return evalDefineRecordType(expr, e)
+		case "cond-expand":
+			return evalCondExpand(expr, e)
+		case "define-values":
+			return evalDefineValues(expr, e)
+		case "include":
+			return evalInclude(expr, e, false)
+		case "include-ci":
+			return evalInclude(expr, e, true)
 		}
 
 		// Check if head is a macro
