@@ -309,12 +309,20 @@
 
     function updateHighlightOverlay() {
         if (!highlightOverlay) return;
-        var text = inputEl.value;
-        // Add a trailing newline so the overlay height matches the textarea
-        highlightOverlay.innerHTML = highlightScheme(text) + "\n";
-        // Sync scroll
-        highlightOverlay.scrollTop = inputEl.scrollTop;
-        highlightOverlay.scrollLeft = inputEl.scrollLeft;
+        try {
+            var text = inputEl.value;
+            // Add a trailing newline so the overlay height matches the textarea
+            highlightOverlay.innerHTML = highlightScheme(text) + "\n";
+            // Sync scroll
+            highlightOverlay.scrollTop = inputEl.scrollTop;
+            highlightOverlay.scrollLeft = inputEl.scrollLeft;
+            // Ensure textarea text is transparent (overlay provides visible text)
+            inputEl.style.color = "transparent";
+        } catch (e) {
+            // On error, fall back to showing plain text in the textarea
+            inputEl.style.color = "";
+            highlightOverlay.innerHTML = "";
+        }
     }
 
     // =========================================================================
@@ -568,6 +576,11 @@
     // Vi Mode Handling
     // =========================================================================
     function handleViNormalKey(e) {
+        // Reset pending 'd' state if a different key is pressed
+        if (e.key !== "d" && handleViNormalKey._pendingD) {
+            handleViNormalKey._pendingD = false;
+        }
+
         switch (e.key) {
         case "i":
             e.preventDefault();
