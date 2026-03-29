@@ -1,7 +1,10 @@
 package builtin
 
 import (
+	"bufio"
+	"fmt"
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/suchi/sucheme-go/pkg/env"
@@ -989,9 +992,9 @@ func TestBytevectorAppend(t *testing.T) {
 func TestTypePredicates(t *testing.T) {
 	e := setup()
 	tests := []struct {
-		fn    string
-		arg   *types.Value
-		want  bool
+		fn   string
+		arg  *types.Value
+		want bool
 	}{
 		{"number?", types.NewInteger(1), true},
 		{"number?", types.NewFloat(1.0), true},
@@ -1597,3 +1600,656 @@ func TestMaxMixedTypes(t *testing.T) {
 		t.Errorf("expected 2, got %s", r.String())
 	}
 }
+
+// =========================================================================
+// Helper: setup with EvalApply for comparator-based tests
+// =========================================================================
+
+func setupWithEvalApply() *env.Env {
+	e := setup()
+	// Set up EvalApply so that assoc/member with custom comparators work.
+	// We use a simple implementation that only supports builtin procedures.
+	EvalApply = func(proc *types.Value, args []*types.Value) (*types.Value, error) {
+		if proc.Type != types.TypeProcedure {
+			return nil, fmt.Errorf("expected procedure")
+		}
+		if proc.ProcVal.IsBuiltin {
+			return proc.ProcVal.Builtin(args)
+		}
+		return nil, fmt.Errorf("lambda not supported in test EvalApply")
+	}
+	return e
+}
+
+// makeList builds a proper list from values.
+func makeList(vals ...*types.Value) *types.Value {
+	return types.FromList(vals)
+}
+
+// makeAlist builds an association list from key-value pairs.
+func makeAlist(pairs ...[2]*types.Value) *types.Value {
+	vals := make([]*types.Value, len(pairs))
+	for i, kv := range pairs {
+		vals[i] = types.Cons(kv[0], kv[1])
+	}
+	return types.FromList(vals)
+}
+
+// =========================================================================
+// assoc with optional comparator
+// =========================================================================
+
+func TestAssocBasicLookup(t *testing.T) {
+	e := setup()
+	alist := makeAlist(
+		[2]*types.Value{types.NewInteger(1), types.NewString("one")},
+		[2]*types.Value{types.NewInteger(2), types.NewString("two")},
+		[2]*types.Value{types.NewInteger(3), types.NewString("three")},
+	)
+	r := call(t, e, "assoc", types.NewInteger(2), alist)
+	if r.Type != types.TypePair || r.PairVal.Car.IntVal != 2 {
+		t.Errorf("expected (2 . \"two\"), got %s", r.String())
+	}
+}
+
+func TestAssocNotFound(t *testing.T) {
+	e := setup()
+	alist := makeAlist(
+		[2]*types.Value{types.NewInteger(1), types.NewString("one")},
+	)
+	r := call(t, e, "assoc", types.NewInteger(99), alist)
+	if r != types.False {
+		t.Errorf("expected #f, got %s", r.String())
+	}
+}
+
+func TestAssocEmptyList(t *testing.T) {
+	e := setup()
+	r := call(t, e, "assoc", types.NewInteger(1), types.Nil())
+	if r != types.False {
+		t.Errorf("expected #f, got %s", r.String())
+	}
+}
+
+func TestAssocStringKeys(t *testing.T) {
+	e := setup()
+	alist := makeAlist(
+		[2]*types.Value{types.NewString("a"), types.NewInteger(1)},
+		[2]*types.Value{types.NewString("b"), types.NewInteger(2)},
+	)
+	r := call(t, e, "assoc", types.NewString("b"), alist)
+	if r.Type != types.TypePair || r.PairVal.Cdr.IntVal != 2 {
+		t.Errorf("expected (\"b\" . 2), got %s", r.String())
+	}
+}
+
+func TestAssocWithCustomComparator(t *testing.T) {
+	e := setupWithEvalApply()
+	// Use string=? as comparator (but implemented as a builtin)
+	strEq, _ := e.Get("string=?")
+	alist := makeAlist(
+		[2]*types.Value{types.NewString("hello"), types.NewInteger(1)},
+		[2]*types.Value{types.NewString("world"), types.NewInteger(2)},
+	)
+	r := call(t, e, "assoc", types.NewString("world"), alist, strEq)
+	if r.Type != types.TypePair || r.PairVal.Cdr.IntVal != 2 {
+		t.Errorf("expected (\"world\" . 2), got %s", r.String())
+	}
+}
+
+func TestAssocWithCustomComparatorNotFound(t *testing.T) {
+	e := setupWithEvalApply()
+	strEq, _ := e.Get("string=?")
+	alist := makeAlist(
+		[2]*types.Value{types.NewString("hello"), types.NewInteger(1)},
+	)
+	r := call(t, e, "assoc", types.NewString("nope"), alist, strEq)
+	if r != types.False {
+		t.Errorf("expected #f, got %s", r.String())
+	}
+}
+
+func TestAssocWithEqComparator(t *testing.T) {
+	e := setupWithEvalApply()
+	eqProc, _ := e.Get("eq?")
+	sym := types.NewSymbol("x")
+	alist := makeAlist(
+		[2]*types.Value{types.NewSymbol("a"), types.NewInteger(1)},
+		[2]*types.Value{types.NewSymbol("x"), types.NewInteger(2)},
+	)
+	r := call(t, e, "assoc", sym, alist, eqProc)
+	if r.Type != types.TypePair || r.PairVal.Cdr.IntVal != 2 {
+		t.Errorf("expected (x . 2), got %s", r.String())
+	}
+}
+
+func TestAssocComparatorNotProcedure(t *testing.T) {
+	e := setup()
+	alist := makeAlist(
+		[2]*types.Value{types.NewInteger(1), types.NewString("one")},
+	)
+	err := callErr(t, e, "assoc", types.NewInteger(1), alist, types.NewInteger(42))
+	if err == nil {
+		t.Error("expected error for non-procedure comparator")
+	}
+}
+
+func TestAssocTooManyArgs(t *testing.T) {
+	e := setup()
+	alist := types.Nil()
+	err := callErr(t, e, "assoc", types.NewInteger(1), alist, types.NewInteger(2), types.NewInteger(3))
+	if err == nil {
+		t.Error("expected error for too many arguments")
+	}
+}
+
+func TestAssocTooFewArgs(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "assoc", types.NewInteger(1))
+	if err == nil {
+		t.Error("expected error for too few arguments")
+	}
+}
+
+func TestAssocNotAList(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "assoc", types.NewInteger(1), types.NewInteger(42))
+	if err == nil {
+		t.Error("expected error for non-list argument")
+	}
+}
+
+func TestAssocListOfNonPairs(t *testing.T) {
+	e := setup()
+	lst := makeList(types.NewInteger(1), types.NewInteger(2))
+	err := callErr(t, e, "assoc", types.NewInteger(1), lst)
+	if err == nil {
+		t.Error("expected error for list of non-pairs")
+	}
+}
+
+func TestAssocDeepEqual(t *testing.T) {
+	e := setup()
+	key := makeList(types.NewInteger(1), types.NewInteger(2))
+	alist := makeAlist(
+		[2]*types.Value{makeList(types.NewInteger(1), types.NewInteger(2)), types.NewString("found")},
+	)
+	r := call(t, e, "assoc", key, alist)
+	if r.Type != types.TypePair || r.PairVal.Cdr.StrVal != "found" {
+		t.Errorf("expected ((1 2) . \"found\"), got %s", r.String())
+	}
+}
+
+// =========================================================================
+// member with optional comparator
+// =========================================================================
+
+func TestMemberBasic(t *testing.T) {
+	e := setup()
+	lst := makeList(types.NewInteger(1), types.NewInteger(2), types.NewInteger(3))
+	r := call(t, e, "member", types.NewInteger(2), lst)
+	if r.Type != types.TypePair || r.PairVal.Car.IntVal != 2 {
+		t.Errorf("expected (2 3), got %s", r.String())
+	}
+}
+
+func TestMemberNotFound(t *testing.T) {
+	e := setup()
+	lst := makeList(types.NewInteger(1), types.NewInteger(2))
+	r := call(t, e, "member", types.NewInteger(99), lst)
+	if r != types.False {
+		t.Errorf("expected #f, got %s", r.String())
+	}
+}
+
+func TestMemberEmptyListR7RS(t *testing.T) {
+	e := setup()
+	r := call(t, e, "member", types.NewInteger(1), types.Nil())
+	if r != types.False {
+		t.Errorf("expected #f, got %s", r.String())
+	}
+}
+
+func TestMemberStrings(t *testing.T) {
+	e := setup()
+	lst := makeList(types.NewString("a"), types.NewString("b"), types.NewString("c"))
+	r := call(t, e, "member", types.NewString("b"), lst)
+	if r.Type != types.TypePair || r.PairVal.Car.StrVal != "b" {
+		t.Errorf("expected (\"b\" \"c\"), got %s", r.String())
+	}
+}
+
+func TestMemberWithCustomComparator(t *testing.T) {
+	e := setupWithEvalApply()
+	strEq, _ := e.Get("string=?")
+	lst := makeList(types.NewString("hello"), types.NewString("world"))
+	r := call(t, e, "member", types.NewString("world"), lst, strEq)
+	if r.Type != types.TypePair || r.PairVal.Car.StrVal != "world" {
+		t.Errorf("expected (\"world\"), got %s", r.String())
+	}
+}
+
+func TestMemberWithCustomComparatorNotFound(t *testing.T) {
+	e := setupWithEvalApply()
+	strEq, _ := e.Get("string=?")
+	lst := makeList(types.NewString("hello"))
+	r := call(t, e, "member", types.NewString("nope"), lst, strEq)
+	if r != types.False {
+		t.Errorf("expected #f, got %s", r.String())
+	}
+}
+
+func TestMemberComparatorNotProcedure(t *testing.T) {
+	e := setup()
+	lst := makeList(types.NewInteger(1))
+	err := callErr(t, e, "member", types.NewInteger(1), lst, types.NewInteger(42))
+	if err == nil {
+		t.Error("expected error for non-procedure comparator")
+	}
+}
+
+func TestMemberTooManyArgs(t *testing.T) {
+	e := setup()
+	lst := types.Nil()
+	err := callErr(t, e, "member", types.NewInteger(1), lst, types.NewInteger(2), types.NewInteger(3))
+	if err == nil {
+		t.Error("expected error for too many arguments")
+	}
+}
+
+func TestMemberTooFewArgs(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "member", types.NewInteger(1))
+	if err == nil {
+		t.Error("expected error for too few arguments")
+	}
+}
+
+func TestMemberNotAList(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "member", types.NewInteger(1), types.NewInteger(42))
+	if err == nil {
+		t.Error("expected error for non-list argument")
+	}
+}
+
+func TestMemberDeepEqual(t *testing.T) {
+	e := setup()
+	key := makeList(types.NewInteger(1), types.NewInteger(2))
+	lst := makeList(
+		makeList(types.NewInteger(3), types.NewInteger(4)),
+		makeList(types.NewInteger(1), types.NewInteger(2)),
+		makeList(types.NewInteger(5), types.NewInteger(6)),
+	)
+	r := call(t, e, "member", key, lst)
+	if r.Type != types.TypePair {
+		t.Errorf("expected pair, got %s", r.Type)
+	}
+	car := r.PairVal.Car
+	if car.Type != types.TypePair || car.PairVal.Car.IntVal != 1 {
+		t.Errorf("expected first element to be (1 2), got %s", car.String())
+	}
+}
+
+func TestMemberWithEqComparator(t *testing.T) {
+	e := setupWithEvalApply()
+	eqProc, _ := e.Get("eq?")
+	lst := makeList(types.NewSymbol("a"), types.NewSymbol("b"), types.NewSymbol("c"))
+	r := call(t, e, "member", types.NewSymbol("b"), lst, eqProc)
+	if r.Type != types.TypePair || r.PairVal.Car.SymbolVal != "b" {
+		t.Errorf("expected (b c), got %s", r.String())
+	}
+}
+
+// =========================================================================
+// current-input-port / current-output-port
+// =========================================================================
+
+func TestCurrentInputPort(t *testing.T) {
+	e := setup()
+	r := call(t, e, "current-input-port")
+	if r.Type != types.TypePort {
+		t.Errorf("expected port, got %s", r.Type)
+	}
+}
+
+func TestCurrentOutputPort(t *testing.T) {
+	e := setup()
+	r := call(t, e, "current-output-port")
+	if r.Type != types.TypePort {
+		t.Errorf("expected port, got %s", r.Type)
+	}
+}
+
+func TestCurrentInputPortNoArgs(t *testing.T) {
+	e := setup()
+	r := call(t, e, "current-input-port")
+	if r != DefaultInputPort {
+		t.Errorf("expected DefaultInputPort sentinel")
+	}
+}
+
+func TestCurrentOutputPortNoArgs(t *testing.T) {
+	e := setup()
+	r := call(t, e, "current-output-port")
+	if r != DefaultOutputPort {
+		t.Errorf("expected DefaultOutputPort sentinel")
+	}
+}
+
+func TestCurrentInputPortWithArgsError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "current-input-port", types.NewInteger(1))
+	if err == nil {
+		t.Error("expected error when passing arguments to current-input-port")
+	}
+}
+
+func TestCurrentOutputPortWithArgsError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "current-output-port", types.NewInteger(1))
+	if err == nil {
+		t.Error("expected error when passing arguments to current-output-port")
+	}
+}
+
+// =========================================================================
+// read from string port
+// =========================================================================
+
+func TestReadNoArgs(t *testing.T) {
+	e := setup()
+	r := call(t, e, "read")
+	if r.Type != types.TypeEof {
+		t.Errorf("expected eof, got %s", r.String())
+	}
+}
+
+func TestReadFromStringPortInteger(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("42")
+	r := call(t, e, "read", port)
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected 42, got %s", r.String())
+	}
+}
+
+func TestReadFromStringPortSymbol(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("hello")
+	r := call(t, e, "read", port)
+	if r.Type != types.TypeSymbol || r.SymbolVal != "hello" {
+		t.Errorf("expected hello, got %s", r.String())
+	}
+}
+
+func TestReadFromStringPortList(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("(1 2 3)")
+	r := call(t, e, "read", port)
+	if r.Type != types.TypePair {
+		t.Errorf("expected pair, got %s", r.Type)
+	}
+	lst, err := r.ToList()
+	if err != nil || len(lst) != 3 {
+		t.Errorf("expected list of 3, got %v, err=%v", lst, err)
+	}
+}
+
+func TestReadFromStringPortString(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort(`"hello world"`)
+	r := call(t, e, "read", port)
+	if r.Type != types.TypeString || r.StrVal != "hello world" {
+		t.Errorf("expected \"hello world\", got %s", r.String())
+	}
+}
+
+func TestReadFromStringPortBoolean(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("#t")
+	r := call(t, e, "read", port)
+	if r.Type != types.TypeBoolean || !r.BoolVal {
+		t.Errorf("expected #t, got %s", r.String())
+	}
+}
+
+func TestReadFromEmptyPort(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("")
+	r := call(t, e, "read", port)
+	if r.Type != types.TypeEof {
+		t.Errorf("expected eof, got %s", r.String())
+	}
+}
+
+func TestReadFromStringPortChar(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort(`#\a`)
+	r := call(t, e, "read", port)
+	if r.Type != types.TypeCharacter || r.CharVal != 'a' {
+		t.Errorf("expected #\\a, got %s", r.String())
+	}
+}
+
+func TestReadFromStringPortQuoted(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("'foo")
+	r := call(t, e, "read", port)
+	if r.Type != types.TypePair {
+		t.Errorf("expected pair (quote foo), got %s", r.Type)
+	}
+	// Should be (quote foo)
+	if r.PairVal.Car.Type != types.TypeSymbol || r.PairVal.Car.SymbolVal != "quote" {
+		t.Errorf("expected (quote ...), got %s", r.String())
+	}
+}
+
+func TestReadFromStringPortVector(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("#(1 2 3)")
+	r := call(t, e, "read", port)
+	if r.Type != types.TypeVector || len(r.VecVal) != 3 {
+		t.Errorf("expected vector of 3, got %s", r.String())
+	}
+}
+
+func TestReadNonPortError(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "read", types.NewInteger(42))
+	if err == nil {
+		t.Error("expected error for non-port argument")
+	}
+}
+
+func TestReadTooManyArgsError(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("1")
+	err := callErr(t, e, "read", port, port)
+	if err == nil {
+		t.Error("expected error for too many arguments")
+	}
+}
+
+func TestReadWhitespaceOnly(t *testing.T) {
+	e := setup()
+	port := makeStringInputPort("   \n\t  ")
+	r := call(t, e, "read", port)
+	if r.Type != types.TypeEof {
+		t.Errorf("expected eof for whitespace-only input, got %s", r.String())
+	}
+}
+
+// testPort is a mock port that satisfies the ReadablePort interface.
+type testPort struct {
+	reader *bufio.Reader
+	closed bool
+}
+
+func (p *testPort) GetReader() ByteReader {
+	return p.reader
+}
+
+func (p *testPort) IsClosed() bool {
+	return p.closed
+}
+
+// makeStringInputPort creates an input port value from a string
+// using a mock port that satisfies ReadablePort.
+func makeStringInputPort(s string) *types.Value {
+	port := &testPort{
+		reader: bufio.NewReader(strings.NewReader(s)),
+	}
+	v := &types.Value{Type: types.TypePort}
+	v.PortVal = port
+	return v
+}
+
+// =========================================================================
+// string-set!
+// =========================================================================
+
+func TestStringSetBasic(t *testing.T) {
+	e := setup()
+	s := types.NewString("hello")
+	call(t, e, "string-set!", s, types.NewInteger(0), types.NewChar('H'))
+	if s.StrVal != "Hello" {
+		t.Errorf("expected \"Hello\", got %q", s.StrVal)
+	}
+}
+
+func TestStringSetLastChar(t *testing.T) {
+	e := setup()
+	s := types.NewString("hello")
+	call(t, e, "string-set!", s, types.NewInteger(4), types.NewChar('!'))
+	if s.StrVal != "hell!" {
+		t.Errorf("expected \"hell!\", got %q", s.StrVal)
+	}
+}
+
+func TestStringSetMiddle(t *testing.T) {
+	e := setup()
+	s := types.NewString("abcde")
+	call(t, e, "string-set!", s, types.NewInteger(2), types.NewChar('X'))
+	if s.StrVal != "abXde" {
+		t.Errorf("expected \"abXde\", got %q", s.StrVal)
+	}
+}
+
+func TestStringSetReturnsVoid(t *testing.T) {
+	e := setup()
+	s := types.NewString("abc")
+	r := call(t, e, "string-set!", s, types.NewInteger(0), types.NewChar('A'))
+	if r.Type != types.TypeVoid {
+		t.Errorf("expected void, got %s", r.Type)
+	}
+}
+
+func TestStringSetIndexOutOfRangeNegative(t *testing.T) {
+	e := setup()
+	s := types.NewString("abc")
+	err := callErr(t, e, "string-set!", s, types.NewInteger(-1), types.NewChar('X'))
+	if err == nil {
+		t.Error("expected error for negative index")
+	}
+}
+
+func TestStringSetIndexOutOfRangeHigh(t *testing.T) {
+	e := setup()
+	s := types.NewString("abc")
+	err := callErr(t, e, "string-set!", s, types.NewInteger(3), types.NewChar('X'))
+	if err == nil {
+		t.Error("expected error for index >= length")
+	}
+}
+
+func TestStringSetEmptyString(t *testing.T) {
+	e := setup()
+	s := types.NewString("")
+	err := callErr(t, e, "string-set!", s, types.NewInteger(0), types.NewChar('X'))
+	if err == nil {
+		t.Error("expected error for empty string")
+	}
+}
+
+func TestStringSetNotString(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "string-set!", types.NewInteger(1), types.NewInteger(0), types.NewChar('X'))
+	if err == nil {
+		t.Error("expected error for non-string argument")
+	}
+}
+
+func TestStringSetNotInteger(t *testing.T) {
+	e := setup()
+	s := types.NewString("abc")
+	err := callErr(t, e, "string-set!", s, types.NewString("0"), types.NewChar('X'))
+	if err == nil {
+		t.Error("expected error for non-integer index")
+	}
+}
+
+func TestStringSetNotChar(t *testing.T) {
+	e := setup()
+	s := types.NewString("abc")
+	err := callErr(t, e, "string-set!", s, types.NewInteger(0), types.NewString("X"))
+	if err == nil {
+		t.Error("expected error for non-character value")
+	}
+}
+
+func TestStringSetUnicode(t *testing.T) {
+	e := setup()
+	s := types.NewString("あいう")
+	call(t, e, "string-set!", s, types.NewInteger(1), types.NewChar('え'))
+	if s.StrVal != "あえう" {
+		t.Errorf("expected \"あえう\", got %q", s.StrVal)
+	}
+}
+
+func TestStringSetTooFewArgs(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "string-set!", types.NewString("abc"), types.NewInteger(0))
+	if err == nil {
+		t.Error("expected error for too few arguments")
+	}
+}
+
+func TestStringSetTooManyArgs(t *testing.T) {
+	e := setup()
+	err := callErr(t, e, "string-set!", types.NewString("abc"), types.NewInteger(0), types.NewChar('X'), types.NewChar('Y'))
+	if err == nil {
+		t.Error("expected error for too many arguments")
+	}
+}
+
+// =========================================================================
+// values (verify existing behavior)
+// =========================================================================
+
+func TestValuesSingle(t *testing.T) {
+	e := setup()
+	r := call(t, e, "values", types.NewInteger(42))
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected 42, got %s", r.String())
+	}
+}
+
+func TestValuesMultiple(t *testing.T) {
+	e := setup()
+	r := call(t, e, "values", types.NewInteger(1), types.NewInteger(2), types.NewInteger(3))
+	if r.Type != types.TypeValues || len(r.ValuesVal) != 3 {
+		t.Errorf("expected 3 values, got %s", r.String())
+	}
+}
+
+func TestValuesZero(t *testing.T) {
+	e := setup()
+	r := call(t, e, "values")
+	if r.Type != types.TypeValues || len(r.ValuesVal) != 0 {
+		t.Errorf("expected 0 values, got %s", r.String())
+	}
+}
+
+// suppress unused import warnings
+var _ = fmt.Sprintf

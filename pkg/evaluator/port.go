@@ -22,6 +22,16 @@ type Port struct {
 	Src      io.Reader        // underlying reader for string input ports (not closable)
 }
 
+// GetReader returns the port's buffered reader (satisfies builtin.ReadablePort).
+func (p *Port) GetReader() interface{ ReadByte() (byte, error) } {
+	return p.Reader
+}
+
+// IsClosed returns whether the port is closed (satisfies builtin.ReadablePort).
+func (p *Port) IsClosed() bool {
+	return p.Closed
+}
+
 // NewInputStringPort creates an input port reading from a string.
 func NewInputStringPort(s string) *Port {
 	r := strings.NewReader(s)
