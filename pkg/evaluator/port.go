@@ -7,7 +7,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/suchi/sucheme-go/pkg/builtin"
 	"github.com/suchi/sucheme-go/pkg/env"
+	"github.com/suchi/sucheme-go/pkg/parser"
 	"github.com/suchi/sucheme-go/pkg/types"
 )
 
@@ -42,8 +44,27 @@ func NewOutputStringPort() *Port {
 	}
 }
 
-// RegisterPortBuiltins registers port-related procedures.
+// RegisterPortBuiltins registers port-related procedures and initializes
+// the default input/output ports so that current-input-port and
+// current-output-port return usable port values.
 func RegisterPortBuiltins(e *env.Env) {
+	// Initialize default ports so current-input-port / current-output-port
+	// return values with non-nil PortVal. Without this, port? and other
+	// predicates would fail on the defaults.
+	stdinPort := &Port{
+		Name:    "stdin",
+		IsInput: true,
+		Reader:  bufio.NewReader(strings.NewReader("")),
+	}
+	builtin.SetDefaultInputPort(makePortValue(stdinPort))
+
+	stdoutPort := &Port{
+		Name:     "stdout",
+		IsOutput: true,
+		Writer:   &strings.Builder{},
+	}
+	builtin.SetDefaultOutputPort(makePortValue(stdoutPort))
+
 	e.Define("open-input-string", types.NewProcedure("open-input-string", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 1 || args[0].Type != types.TypeString {
 			return nil, fmt.Errorf("expected a string")
@@ -286,6 +307,64 @@ func RegisterPortBuiltins(e *env.Env) {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
 		return types.NewBoolean(args[0].Type == types.TypeEof), nil
+	}))
+
+	// read: R7RS (read) or (read port) - reads one S-expression from input port.
+	// This overrides the builtin stub with a proper implementation using the parser.
+	//
+	// Known limitation: This implementation reads all available bytes from the port
+	// before parsing. For string ports this works correctly, but for streaming ports
+	// (e.g., stdin) it would block until EOF. Incremental parsing (reading one datum
+	// at a time) would require a parser that accepts an io.Reader, which is a future
+	// enhancement.
+	e.Define("read", types.NewProcedure("read", func(args []*types.Value) (*types.Value, error) {
+		if len(args) > 1 {
+			return nil, fmt.Errorf("read: expected 0 or 1 argument, got %d", len(args))
+		}
+		var port *Port
+		if len(args) == 0 {
+			// Use current-input-port when no argument is given
+			if builtin.DefaultInputPort == nil || builtin.DefaultInputPort.PortVal == nil {
+				return nil, fmt.Errorf("read: current-input-port is not available")
+			}
+			var ok bool
+			port, ok = builtin.DefaultInputPort.PortVal.(*Port)
+			if !ok || port == nil {
+				return nil, fmt.Errorf("read: current-input-port is not a valid port")
+			}
+		} else {
+			var err error
+			port, err = getInputPort(args)
+			if err != nil {
+				return nil, fmt.Errorf("read: %w", err)
+			}
+		}
+		if port.Closed {
+			return nil, fmt.Errorf("read: port is closed")
+		}
+		// Read available bytes from the port's reader
+		var buf []byte
+		for {
+			b, readErr := port.Reader.ReadByte()
+			if readErr == io.EOF {
+				break
+			}
+			if readErr != nil {
+				return nil, fmt.Errorf("read: %w", readErr)
+			}
+			buf = append(buf, b)
+		}
+		if len(buf) == 0 {
+			return types.Eof(), nil
+		}
+		exprs, parseErr := parser.ParseAllString(string(buf))
+		if parseErr != nil {
+			return nil, fmt.Errorf("read: %w", parseErr)
+		}
+		if len(exprs) == 0 {
+			return types.Eof(), nil
+		}
+		return exprs[0], nil
 	}))
 }
 

@@ -1,0 +1,38 @@
+# Dependabot configuration with cooldown to mitigate supply chain attacks.
+# Do NOT auto-merge or immediately update dependencies.
+# All updates go through PR review before merging.
+#
+# cooldown: delays PR creation until a new version has been published for
+# at least N days, giving the community time to detect malicious releases.
+
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default: 3
+      semver-major: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    cooldown:
+      default: 3
+      semver-major: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore"
+      include: "scope"

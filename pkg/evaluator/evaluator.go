@@ -4,6 +4,7 @@ package evaluator
 import (
 	"fmt"
 
+	"github.com/suchi/sucheme-go/pkg/builtin"
 	"github.com/suchi/sucheme-go/pkg/env"
 	"github.com/suchi/sucheme-go/pkg/parser"
 	"github.com/suchi/sucheme-go/pkg/types"
@@ -129,6 +130,18 @@ func evalList(expr *types.Value, e *env.Env) (*evalResult, error) {
 			return evalDefineLibrary(expr, e)
 		case "import":
 			return evalImport(expr, e)
+		case "case":
+			return evalCase(expr, e)
+		case "define-record-type":
+			return evalDefineRecordType(expr, e)
+		case "cond-expand":
+			return evalCondExpand(expr, e)
+		case "define-values":
+			return evalDefineValues(expr, e)
+		case "include":
+			return evalInclude(expr, e, false)
+		case "include-ci":
+			return evalInclude(expr, e, true)
 		}
 
 		// Check if head is a macro
@@ -1000,6 +1013,10 @@ func evalBodyTCO(body []*types.Value, e *env.Env) (*evalResult, error) {
 // This must be called after builtin.RegisterBuiltins since apply needs
 // access to the evaluator's applyProc to support both builtins and lambdas.
 func RegisterApply(e *env.Env) {
+	// Initialize EvalApply so builtin functions (assoc, member with custom
+	// comparators) can invoke user-defined procedures.
+	builtin.EvalApply = callProc
+
 	e.Define("apply", types.NewProcedure("apply", func(args []*types.Value) (*types.Value, error) {
 		if len(args) < 2 {
 			return nil, fmt.Errorf("expected at least 2 arguments")
