@@ -53,6 +53,16 @@
     var history = loadHistory();
     var historyIndex = history.length;
 
+    function addToHistory(expr) {
+        history.push(expr);
+        // Trim in-memory array to MAX_HISTORY to prevent unbounded growth
+        if (history.length > MAX_HISTORY) {
+            history = history.slice(-MAX_HISTORY);
+        }
+        historyIndex = history.length;
+        saveHistory(history);
+    }
+
     // =========================================================================
     // Theme Management
     // =========================================================================
@@ -196,7 +206,19 @@
     // Pattern for strings, comments, numbers, and booleans
     var stringPattern = /"(?:[^"\\]|\\.)*"/g;
     var commentPattern = /;[^\n]*/g;
-    var numberPattern = /(?<![a-zA-Z!$%&*+\-./:<=>?@^_~#])([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|[+-]?\d+\/\d+)(?![a-zA-Z!$%&*+\-./:<=>?@^_~#])/g;
+    var numberPattern;
+    try {
+        // Use lookbehind where supported for more precise number matching
+        numberPattern = new RegExp(
+            "(?<![a-zA-Z!$%&*+\\-./:<=>?@^_~#])" +
+            "([+-]?\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?|[+-]?\\d+/\\d+)" +
+            "(?![a-zA-Z!$%&*+\\-./:<=>?@^_~#])",
+            "g"
+        );
+    } catch (e) {
+        // Fallback for environments without lookbehind support
+        numberPattern = /[+-]?(?:\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\d+\/\d+)/g;
+    }
     var booleanPattern = /#[tf]\b/g;
 
     function escapeHtml(text) {
@@ -427,33 +449,25 @@
 
         // Handle REPL meta-commands
         if (expr === ":help") {
-            history.push(expr);
-            historyIndex = history.length;
-            saveHistory(history);
+            addToHistory(expr);
             appendOutput("> " + expr, "prompt");
             showHelp();
             return;
         }
         if (expr === ":examples") {
-            history.push(expr);
-            historyIndex = history.length;
-            saveHistory(history);
+            addToHistory(expr);
             appendOutput("> " + expr, "prompt");
             showExamples();
             return;
         }
         if (expr === ":clear") {
-            history.push(expr);
-            historyIndex = history.length;
-            saveHistory(history);
+            addToHistory(expr);
             clearOutput();
             return;
         }
 
         // Add to history
-        history.push(expr);
-        historyIndex = history.length;
-        saveHistory(history);
+        addToHistory(expr);
 
         // Show the input expression
         appendOutput("> " + expr, "prompt");
