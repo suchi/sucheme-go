@@ -63,10 +63,12 @@ cd sucheme-go
 go test ./...
 
 # 3. CLI バイナリをビルド
-go build -o sucheme ./cmd/sucheme/
+go build -o sucheme ./cmd/sucheme/          # Linux / macOS
+# go build -o sucheme.exe ./cmd/sucheme/    # Windows
 
 # 4. REPL を起動して動作確認
-./sucheme
+./sucheme              # Linux / macOS
+# .\sucheme.exe       # Windows
 # sucheme> (+ 1 2 3)
 # 6
 # sucheme> (exit)
@@ -76,7 +78,11 @@ go build -o sucheme ./cmd/sucheme/
 ./sucheme -e '(+ 1 2)'
 ```
 
+> **Windows の注意**: パス区切りに `\` と `/` のどちらも使えますが、Go の `go build` ではスラッシュ (`/`) が推奨です。REPL でのファイル実行時もスラッシュで統一すると問題が少なくなります。
+
 ### WASM ビルド（Web UI 開発時）
+
+以下のコマンドは Linux / macOS（または Windows 上の Git Bash / WSL）向けです。
 
 ```bash
 # WASM バイナリをビルド
@@ -96,7 +102,33 @@ python -m http.server 8000
 # ブラウザで http://localhost:8000/index.html を開いて確認
 ```
 
-Windows の場合、WASM ビルドは Git Bash や WSL 上で実行してください。
+<details>
+<summary>Windows (PowerShell) での WASM ビルド</summary>
+
+```powershell
+# WASM バイナリをビルド
+$env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
+
+# Go ランタイムの wasm_exec.js をコピー（Go のバージョンにより場所が異なる）
+$goRoot = go env GOROOT
+$wasmExecMisc = Join-Path $goRoot "misc\wasm\wasm_exec.js"
+$wasmExecLib = Join-Path $goRoot "lib\wasm\wasm_exec.js"
+if (Test-Path $wasmExecMisc) {
+    Copy-Item $wasmExecMisc web-ui/
+} elseif (Test-Path $wasmExecLib) {
+    Copy-Item $wasmExecLib web-ui/
+} else {
+    throw "wasm_exec.js not found under Go root."
+}
+
+# ローカル HTTP サーバを起動
+cd web-ui
+python -m http.server 8000
+```
+
+</details>
+
+> **推奨**: Windows ユーザーは Git Bash や WSL を使うと、Linux/macOS と同じコマンドがそのまま使えます。
 
 ### Makefile
 
@@ -532,17 +564,23 @@ func TestDefineAndUse(t *testing.T) {
 ### ネイティブビルド
 
 ```bash
+# Linux / macOS
 go build -o sucheme ./cmd/sucheme/
+
+# Windows (cmd / PowerShell)
+go build -o sucheme.exe ./cmd/sucheme/
 ```
 
 バージョン付きビルド:
 ```bash
-go build -ldflags="-s -w -X main.Version=v1.0.0" -o sucheme ./cmd/sucheme/
+go build -ldflags="-s -w -X main.Version=v1.0.0" -o sucheme ./cmd/sucheme/       # Linux / macOS
+go build -ldflags="-s -w -X main.Version=v1.0.0" -o sucheme.exe ./cmd/sucheme/   # Windows
 ```
 
 ### WASM ビルド
 
 ```bash
+# Linux / macOS（または Git Bash / WSL）
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
 # wasm_exec.js の場所は Go バージョンにより異なる
 if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
@@ -550,6 +588,20 @@ if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
 elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
   cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
 fi
+```
+
+```powershell
+# Windows (PowerShell)
+$env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
+# wasm_exec.js の場所は Go バージョンにより異なる
+$goRoot = go env GOROOT
+if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/misc/wasm/wasm_exec.js" web-ui/
+} elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
+} else {
+    throw "wasm_exec.js not found in $goRoot/misc/wasm or $goRoot/lib/wasm."
+}
 ```
 
 ### CI/CD
@@ -862,16 +914,28 @@ go test -race ./...
 # Go のバージョンを確認（1.24+ が必要）
 go version
 
-# 環境変数を明示的に設定して実行
+# 環境変数を明示的に設定して実行（Linux / macOS）
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
+# Windows (PowerShell) の場合:
+# $env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
 
 # wasm_exec.js のバージョンが Go と一致しているか確認（必ず同じ Go バージョンからコピー）
-# wasm_exec.js の場所は Go バージョンにより異なる
+# wasm_exec.js の場所は Go バージョンにより異なる（Linux / macOS）
 if [ -f "$(go env GOROOT)/misc/wasm/wasm_exec.js" ]; then
   cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
 elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
   cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
+else
+  echo "wasm_exec.js not found under GOROOT (checked misc/wasm and lib/wasm)" >&2
+  exit 1
 fi
+# Windows (PowerShell) の場合:
+# $goRoot = go env GOROOT
+# if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
+#   Copy-Item "$goRoot/misc/wasm/wasm_exec.js" web-ui/
+# } elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
+#   Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
+# }
 ```
 
 ### 循環依存エラー (`import cycle not allowed`)

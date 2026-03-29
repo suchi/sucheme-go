@@ -87,9 +87,62 @@ sucheme --version            # バージョン表示
 
 ## ビルド方法
 
+### ネイティブビルド
+
 ```bash
-go build -o sucheme ./cmd/sucheme/          # ネイティブビルド
-GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/  # WASM
+# Linux / macOS
+go build -o sucheme ./cmd/sucheme/
+
+# Windows (cmd / PowerShell)
+go build -o sucheme.exe ./cmd/sucheme/
+```
+
+> **注**: `go install` を使う場合は OS に応じた拡張子が自動付与されるため、`go install github.com/suchi/sucheme-go/cmd/sucheme@latest` がどのプラットフォームでも動作します。
+
+### WASM ビルド
+
+```bash
+# Linux / macOS
+GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
+# wasm_exec.js をコピー（Go バージョンにより場所が異なる）
+cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/ 2>/dev/null || \
+  cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
+```
+
+```powershell
+# Windows (PowerShell)
+$env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
+$goRoot = go env GOROOT
+if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/misc/wasm/wasm_exec.js" web-ui/
+} elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
+} else {
+    Write-Error "wasm_exec.js not found in '$goRoot\misc\wasm' or '$goRoot\lib\wasm'."
+    exit 1
+}
+```
+
+> **注意 (PowerShell)**: `$env:GOOS` / `$env:GOARCH` は PowerShell セッションに残り続けます。WASM ビルド後にネイティブビルドを行う場合は、別セッションで実行するか `Remove-Item Env:GOOS, Env:GOARCH` で環境変数を戻してください。
+
+```bat
+rem Windows (cmd)
+set GOOS=js&& set GOARCH=wasm&& go build -o web-ui/sucheme.wasm ./cmd/wasm/
+for /f "delims=" %%G in ('go env GOROOT') do set GOROOT=%%G
+if exist "%GOROOT%\misc\wasm\wasm_exec.js" (
+  copy "%GOROOT%\misc\wasm\wasm_exec.js" web-ui\
+) else if exist "%GOROOT%\lib\wasm\wasm_exec.js" (
+  copy "%GOROOT%\lib\wasm\wasm_exec.js" web-ui\
+) else (
+  echo wasm_exec.js not found under "%GOROOT%\misc\wasm" or "%GOROOT%\lib\wasm" 1>&2
+)
+```
+
+> **注**: Windows では Git Bash や WSL を使えば Linux と同じコマンドが使えます。ローカルで Web UI を確認するには HTTP サーバー（例: `cd web-ui && python3 -m http.server 8080`）を起動してブラウザでアクセスしてください。
+
+### テスト・ベンチマーク
+
+```bash
 go test ./...                                 # テスト
 go test -bench=. -benchmem ./pkg/evaluator/   # ベンチマーク
 go test -coverprofile=coverage.out ./...      # カバレッジ
