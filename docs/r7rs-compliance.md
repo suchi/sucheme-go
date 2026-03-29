@@ -6,10 +6,12 @@ Sucheme の R7RS (Revised⁷ Report on the Algorithmic Language Scheme) 準拠�
 
 ```mermaid
 pie title R7RS 対応状況
-    "対応完了" : 81
-    "部分対応" : 10
-    "未対応" : 10
+    "対応完了" : 92
+    "部分対応" : 7
+    "未対応" : 3
 ```
+
+> **集計ルール**: 上記の件数は表の各項目（行）を一意にカウントした結果（合計 102）。`dynamic-wind` は「特殊形式」と「継続」、`define-library`/`import` は「特殊形式」と「ライブラリシステム」の両セクションに記載されているが、集計では各1件としてカウント。表の行数を単純に合計した値とは一致しない場合がある。
 
 ## 判定基準
 
@@ -24,7 +26,7 @@ pie title R7RS 対応状況
 | `quote` | 対応完了 | |
 | `if` | 対応完了 | TCO対応 |
 | `cond` | 対応完了 | else節、=> 構文対応 |
-| `case` | 部分対応 | 基本形のみ |
+| `case` | 対応完了 | `=>` 構文、`eqv?` 比較対応 |
 | `and` | 対応完了 | 短絡評価 |
 | `or` | 対応完了 | 短絡評価 |
 | `when` | 対応完了 | |
@@ -45,13 +47,13 @@ pie title R7RS 対応状況
 | `syntax-rules` | 対応完了 | 省略記号、リテラル、ワイルドカード、ドット対 |
 | `guard` | 対応完了 | else、=> 構文対応 |
 | `case-lambda` | 対応完了 | TCO維持 |
-| `define-values` | 未対応 | |
-| `define-record-type` | 未対応 | |
+| `define-values` | 対応完了 | `(values ...)` の多値を複数変数に束縛 |
+| `define-record-type` | 対応完了 | コンストラクタ、述語、アクセサ、ミューテータ |
 | `define-library` | 対応完了 | export (rename含む)、begin、import |
 | `import` | 対応完了 | only、except、prefix、rename |
-| `include` | 未対応 | |
-| `include-ci` | 未対応 | |
-| `cond-expand` | 未対応 | |
+| `include` | 対応完了 | ファイル読み込み・評価（WASM非対応） |
+| `include-ci` | 部分対応 | 大文字小文字無視モード（WASM非対応）。現在の実装はソース全体を小文字化しており、R7RS が要求する識別子のみのケースフォールドに非準拠 |
+| `cond-expand` | 対応完了 | `r7rs`, `sucheme`, `and`/`or`/`not`/`library` |
 | `parameterize` | 対応完了 | `make-parameter` + 動的バインディングスタック |
 | `dynamic-wind` | 部分対応 | escape continuation で before/after 実行。re-entrant 時の再入は未対応 |
 
@@ -96,8 +98,8 @@ pie title R7RS 対応状況
 | `set-car!`, `set-cdr!` | 対応完了 | |
 | `map`, `for-each` | 対応完了 | lambda/builtin両対応 |
 | `filter` | 対応完了 | |
-| `assoc`, `assv`, `assq` | 部分対応 | `assoc` の任意比較手続き引数は未対応 |
-| `member`, `memv`, `memq` | 部分対応 | `member` の任意比較手続き引数は未対応 |
+| `assoc`, `assv`, `assq` | 対応完了 | `assoc` はオプショナル第3引数（比較手続き）対応 |
+| `member`, `memv`, `memq` | 対応完了 | `member` はオプショナル第3引数（比較手続き）対応 |
 | `null?`, `pair?`, `list?` | 対応完了 | |
 | `apply` | 対応完了 | lambda/builtin両対応 |
 | `values` | 部分対応 | 単一値のみ完全 |
@@ -112,7 +114,7 @@ pie title R7RS 対応状況
 | `string-upcase`, `string-downcase` | 対応完了 | |
 | `string=?`, `string<?`, `string>?` | 対応完了 | |
 | `string-copy`, `make-string` | 対応完了 | |
-| `string-set!` | 未対応 | 未実装（Go文字列は不変のため要検討） |
+| `string-set!` | 対応完了 | `[]rune` 変換による実装（Go文字列の不変制約下） |
 | `symbol->string`, `string->symbol` | 対応完了 | |
 
 ## 文字
@@ -154,10 +156,10 @@ pie title R7RS 対応状況
 | 機能 | 状態 | 備考 |
 |------|------|------|
 | `display`, `write`, `newline` | 対応完了 | CLI: stdout, WASM: キャプチャ |
-| `read` | 未対応 | |
-| `read-char`, `write-char`, `read-line` | 部分対応 | 文字列ポート経由。ポート引数必須（`current-*-port` 未実装） |
-| `peek-char`, `char-ready?` | 部分対応 | ポート引数必須（`current-input-port` 未実装） |
-| `write-string` | 部分対応 | ポート引数必須（`current-output-port` 未実装） |
+| `read` | 対応完了 | S式リーダー。`current-input-port` 対応 |
+| `read-char`, `write-char`, `read-line` | 部分対応 | 文字列ポート経由。`current-*-port` 実装済みだがデフォルトポートとの統合テスト不足 |
+| `peek-char`, `char-ready?` | 部分対応 | `current-input-port` 実装済みだがデフォルトポートとの統合テスト不足 |
+| `write-string` | 部分対応 | `current-output-port` 実装済みだがデフォルトポートとの統合テスト不足 |
 | `open-input-string`, `open-output-string` | 対応完了 | |
 | `get-output-string` | 対応完了 | |
 | `open-input-file`, `open-output-file` | 未対応 | WASM非対応 |
