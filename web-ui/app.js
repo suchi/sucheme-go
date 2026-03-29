@@ -241,7 +241,8 @@
         // Fallback for environments without lookbehind support
         numberPattern = /[+-]?(?:\d+(?:\.\d+)?(?:[eE][+-]?\d+)?|\d+\/\d+)/g;
     }
-    var booleanPattern = /#[tf]\b/g;
+    // Match Scheme booleans: #t/#f and #true/#false (case-insensitive)
+    var booleanPattern = /#(?:t(?:rue)?|f(?:alse)?)\b/gi;
 
     function escapeHtml(text) {
         return text
