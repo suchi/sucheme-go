@@ -265,7 +265,7 @@
 gantt
     title Sucheme エンハンスロードマップ
     dateFormat YYYY-MM-DD
-    axisFormat %Y Q%q
+    axisFormat %Y-%m
 
     section Phase 1: R7RS完全準拠
     有理数・複素数・Full Continuations等  :2026-04-01, 2026-09-30
