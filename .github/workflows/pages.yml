@@ -44,9 +44,18 @@ jobs:
           go test -coverprofile=coverage.out -covermode=atomic ./...
           go tool cover -html=coverage.out -o web-ui/dist/coverage.html
 
-      # Copy dashboard template
-      - name: Copy dashboard
-        run: cp web-ui/dashboard.html web-ui/dist/dashboard.html
+      # Copy dashboard and inject CI data
+      - name: Build dashboard with CI data
+        run: |
+          cp web-ui/dashboard.html web-ui/dist/dashboard.html
+          # Inject build timestamp
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+          sed -i "s/__BUILD_TIMESTAMP__/$TIMESTAMP/g" web-ui/dist/dashboard.html
+          # Inject overall coverage percentage
+          if [ -f coverage.out ]; then
+            COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
+            sed -i "s/__COVERAGE_PCT__/$COVERAGE/g" web-ui/dist/dashboard.html
+          fi
 
       - uses: actions/upload-pages-artifact@v3
         with:
