@@ -96,8 +96,8 @@ GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
 
 ```yaml
 cooldown:
-  default: 3        # 新バージョン公開から3日間待機
-  semver-major: 7   # メジャーバージョンは7日間待機
+  default-days: 3        # 新バージョン公開から3日間待機
+  semver-major-days: 7   # メジャーバージョンは7日間待機
 ```
 
 ### 絶対に守るべきルール
