@@ -136,17 +136,21 @@ func loadFile(path string, e *env.Env) error {
 }
 
 // useReadline determines whether readline should be used.
-// It returns false when --no-readline is set or stdin is not a terminal.
+// It returns false when --no-readline is set or stdin/stdout are not terminals.
 func useReadline(noReadline bool) bool {
 	if noReadline {
 		return false
 	}
-	fi, err := os.Stdin.Stat()
+	stdinInfo, err := os.Stdin.Stat()
 	if err != nil {
 		return false
 	}
-	// If stdin is a pipe or file (not a character device), disable readline
-	return fi.Mode()&os.ModeCharDevice != 0
+	stdoutInfo, err := os.Stdout.Stat()
+	if err != nil {
+		return false
+	}
+	// Enable readline only when both stdin and stdout are character devices (TTY).
+	return stdinInfo.Mode()&os.ModeCharDevice != 0 && stdoutInfo.Mode()&os.ModeCharDevice != 0
 }
 
 // historyFile returns the path to the history file (~/.sucheme_history).
@@ -181,9 +185,26 @@ func runPlainREPL(e *env.Env) {
 	for {
 		fmt.Print(prompt)
 		line, err := reader.ReadString('\n')
+
+		// Even on EOF, ReadString may return a partial line; add it to the buffer.
+		if len(line) > 0 {
+			buf.WriteString(line)
+		}
+
 		if err != nil {
 			if err == io.EOF {
-				if buf.Len() > 0 {
+				// Try to evaluate any remaining buffered input
+				input := strings.TrimSpace(buf.String())
+				if input != "" && isComplete(input) {
+					if input != "(exit)" && input != "(quit)" {
+						result, evalErr := evaluator.EvalString(input, e)
+						if evalErr != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", evalErr)
+						} else if result != nil && result.Type != types.TypeVoid {
+							fmt.Println(result.String())
+						}
+					}
+				} else if input != "" {
 					fmt.Fprintln(os.Stderr, "\nError: unexpected end of input")
 				} else {
 					fmt.Println()
@@ -194,7 +215,6 @@ func runPlainREPL(e *env.Env) {
 			return
 		}
 
-		buf.WriteString(line)
 		input := strings.TrimSpace(buf.String())
 
 		if input == "" {
