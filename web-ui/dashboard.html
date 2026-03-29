@@ -449,12 +449,7 @@
       <a href="#cicd">CI/CD Pipeline</a>
     </div>
 
-    <!-- Timestamp -->
-    <!--
-      NOTE: The real last-run timestamp is injected by CI in pages.yml.
-      The workflow replaces the full text:
-        sed -i "s|Last build: __BUILD_TIMESTAMP__|Last build: $(date -u '+%Y-%m-%d %H:%M UTC')|" web-ui/dist/dashboard.html
-    -->
+    <!-- Timestamp: injected by CI in pages.yml (see that file for implementation) -->
     <div class="timestamp" id="build-timestamp">Last build: __BUILD_TIMESTAMP__</div>
 
     <!-- ============================================================= -->
@@ -462,21 +457,13 @@
     <!-- ============================================================= -->
     <div class="grid">
       <div class="stat-card">
-        <!--
-          TODO (CI integration): Replace this static value with the real test count.
-          In pages.yml, parse test-output.txt:
-            TESTS=$(grep -c '=== RUN' test-output.txt)
-            sed -i "s/__TEST_COUNT__/$TESTS/" web-ui/dist/dashboard.html
-        -->
+        <!-- TODO (CI integration): inject real test count via pages.yml using id="stat-tests" -->
         <div class="stat-value color-green" id="stat-tests">400+</div>
         <div class="stat-label">Passing Tests</div>
         <div class="stat-note">(approx. &mdash; see CI for exact count)</div>
       </div>
       <div class="stat-card">
-        <!--
-          TODO (CI integration): Inject real coverage %.
-            sed -i "s/__COVERAGE_PCT__/$COVERAGE/" web-ui/dist/dashboard.html
-        -->
+        <!-- Coverage %: injected by CI in pages.yml -->
         <div class="stat-value" id="stat-coverage">--</div>
         <div class="stat-label">Total Coverage</div>
         <div class="stat-note">(approx. &mdash; see CI for exact value)</div>
@@ -487,9 +474,7 @@
         <div class="stat-note">Linux / macOS / Windows</div>
       </div>
       <div class="stat-card">
-        <!--
-          TODO (CI integration): Count built-in functions dynamically if desired.
-        -->
+        <!-- Static approximation -->
         <div class="stat-value color-blue">100+</div>
         <div class="stat-label">Built-in Functions</div>
         <div class="stat-note">(approx.)</div>
@@ -506,12 +491,7 @@
       <div class="card">
         <h3>Overall Coverage</h3>
         <div class="donut-container">
-          <!--
-            TODO (CI integration): Set the real overall coverage value.
-            In pages.yml, replace __COVERAGE_PCT__ with the actual percentage:
-              COVERAGE=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | sed 's/%//')
-              sed -i "s/__COVERAGE_PCT__/$COVERAGE/g" web-ui/dist/dashboard.html
-          -->
+          <!-- Overall coverage: injected by CI in pages.yml -->
           <div class="donut" id="donut-chart">
             <div class="donut-hole">
               <span class="donut-pct" id="donut-pct">--%</span>
@@ -527,15 +507,7 @@
       <!-- Per-package progress bars -->
       <div class="card">
         <h3>Package Coverage</h3>
-        <!--
-          TODO (CI integration): Replace the static percentages below with real
-          per-package coverage. In pages.yml, parse coverage.out per directory
-          and inject via sed or a template script. Example:
-            awk '...' coverage.out | while read pkg pct; do
-              sed -i "s/__COV_${pkg}__/$pct/" web-ui/dist/dashboard.html
-            done
-          The IDs (cov-types, cov-lexer, etc.) can be targeted by the script.
-        -->
+        <!-- TODO (CI integration): inject per-package coverage via pages.yml -->
         <div id="pkg-coverage-bars">
           <!-- These values are approximate defaults; CI should overwrite them -->
           <div class="progress-row">
@@ -570,7 +542,7 @@
           </div>
         </div>
         <p class="card-note-lg">
-          Values prefixed with ~ are approximations. CI injects exact data on each build.
+          Values prefixed with ~ are currently static approximations. CI-driven per-package coverage injection is planned.
         </p>
       </div>
     </div>
@@ -582,12 +554,7 @@
 
     <div class="card card-spaced">
       <h3>Test Results by Package</h3>
-      <!--
-        TODO (CI integration): Populate this table from CI test output.
-        In pages.yml, parse test-output.txt to extract per-package test counts:
-          grep '^ok' test-output.txt | awk '{print $2, $3}' > pkg-tests.txt
-        Then inject into the HTML with sed or a template script.
-      -->
+      <!-- TODO (CI integration): inject per-package test counts via pages.yml -->
       <table>
         <thead>
           <tr>
@@ -637,9 +604,9 @@
         </tbody>
       </table>
       <p class="card-note">
-        Test counts (--) are populated by CI. Check the
+        Test counts (--) are placeholders. See the
         <a href="https://github.com/suchi/sucheme-go/actions">Actions tab</a>
-        for exact results.
+        for exact test results.
       </p>
     </div>
 
@@ -875,7 +842,7 @@
         </tbody>
       </table>
       <p class="card-note">
-        Benchmark times (--) are populated by CI. Download artifacts for exact numbers.
+        Benchmark times (--) are placeholders. See CI artifacts for the latest numbers.
       </p>
     </div>
 
@@ -939,7 +906,7 @@
   <script>
     (function() {
       // Overall coverage percentage.
-      // CI replaces __COVERAGE_PCT__ with the real value in pages.yml.
+      // CI replaces the coverage placeholder with the real value in pages.yml.
       // Uses conic-gradient (CSS) with minimal JS to set the dynamic value.
       var raw = '__COVERAGE_PCT__';
       var pct = parseFloat(raw);
