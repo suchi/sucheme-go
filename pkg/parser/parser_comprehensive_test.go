@@ -12,6 +12,8 @@ import (
 // =========================================================================
 
 func TestParseDeepNesting(t *testing.T) {
+	// Each level wraps into a single-element list: (x) => pair(x, nil)
+	// After depth levels of .Car traversal, we reach the integer 42.
 	depth := 100
 	input := strings.Repeat("(", depth) + "42" + strings.Repeat(")", depth)
 	v := mustParse(t, input)
@@ -22,7 +24,7 @@ func TestParseDeepNesting(t *testing.T) {
 		v = v.PairVal.Car
 	}
 	if v.Type != types.TypeInteger || v.IntVal != 42 {
-		t.Fatalf("expected 42, got %v", v)
+		t.Fatalf("expected integer 42, got %v (type=%s)", v, v.Type)
 	}
 }
 
