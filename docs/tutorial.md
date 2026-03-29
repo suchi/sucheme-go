@@ -426,6 +426,8 @@ Sucheme はトランポリン方式の末尾呼び出し最適化 (TCO) を実�
 
 ### swap マクロ
 
+`set!` を使うため、変数（識別子）同士の入れ替え専用です。
+
 ```scheme
 (define-syntax swap!
   (syntax-rules ()
@@ -659,6 +661,9 @@ GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
 cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
 
 # HTTP サーバーで配信
+# 注: .wasm の MIME タイプ (application/wasm) が必要です。
+# Python 3.9+ なら自動対応ですが、古いバージョンでは
+# WASM のロードに失敗する場合があります。
 cd web-ui && python3 -m http.server 8080
 ```
 
