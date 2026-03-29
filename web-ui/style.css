@@ -101,10 +101,6 @@ header .subtitle {
     font-size: 0.9rem;
 }
 
-header nav {
-    margin-left: auto;
-}
-
 header nav a {
     color: var(--text-accent);
     text-decoration: none;
@@ -445,10 +441,6 @@ footer {
         margin-left: 0;
         width: 100%;
         justify-content: flex-start;
-    }
-
-    header nav {
-        margin-left: 0;
     }
 
     main {

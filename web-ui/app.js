@@ -205,15 +205,16 @@
     // Scheme delimiters: whitespace, parens, brackets, quotes, comma, semicolon, start/end
     // We capture the keyword in group 1 and use a replacement function to preserve context.
     var SCHEME_DELIM = "[\\s()\\[\\]'`,;]";
-    var keywordPattern = new RegExp(
-        "(?:^|(?<=" + SCHEME_DELIM + "))(" +
-        SCHEME_KEYWORDS.join("|") +
-        ")(?=" + SCHEME_DELIM + "|$)", "g"
-    );
+    var keywordPattern;
     var keywordUsesLookbehind = true;
-    // Fallback for browsers without lookbehind support
+    // Wrap RegExp construction in try/catch because lookbehind syntax itself
+    // throws SyntaxError in browsers that do not support it.
     try {
-        keywordPattern.test("");
+        keywordPattern = new RegExp(
+            "(?:^|(?<=" + SCHEME_DELIM + "))(" +
+            SCHEME_KEYWORDS.join("|") +
+            ")(?=" + SCHEME_DELIM + "|$)", "g"
+        );
     } catch (e) {
         // Capture preceding delimiter in group 1, keyword in group 2
         keywordPattern = new RegExp(
