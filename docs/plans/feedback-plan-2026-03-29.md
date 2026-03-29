@@ -1,7 +1,11 @@
 # Sucheme フィードバック対応プラン & SOW
 
-## 作成日: 2026-03-29
-## ステータス: 実行中
+| 項目 | 値 |
+|------|-----|
+| 作成日 | 2026-03-29 |
+| 完了日 | 2026-03-29 |
+| ステータス | 全Round完了 |
+| 関連PR | #18, #19, #20, #21, #22, #26, #27, #28, #29 |
 
 ---
 
@@ -177,15 +181,18 @@ R7RS 準拠強化、テスト拡充、ダッシュボード改善、将来ロー
 
 ## 進捗管理
 
-| Round | タスク | ブランチ | PR | 状態 |
-|-------|--------|---------|-----|------|
-| 1-A | サンプル品質 | fix/examples-quality | #21 | 完了 |
-| 1-B | ドキュメント修正 | fix/cross-platform-docs | #18 | 完了 |
-| 1-C | CLI readline | feat/cli-readline | #19 | 完了 |
-| 1-D | Web UI 強化 | feat/web-ui-enhancements | #20 | 完了 |
-| 1-E | ダッシュボード | feat/dashboard-v2 | #22 | 完了 |
-| 2-A | R7RS 準拠 | feat/r7rs-compliance | #26 | 完了 |
-| 3-A | テスト強化 | test/comprehensive-coverage | - | 待機中 |
-| 4-A | ロードマップ | docs/enhancement-roadmap | - | 待機中 |
+| Round | タスク | ブランチ | PR | マージ日 | 状態 |
+|-------|--------|---------|-----|---------|------|
+| 1-A | サンプル品質 | fix/examples-quality | #21 | 2026-03-29 12:44 | 完了 |
+| 1-B | ドキュメント修正 | fix/cross-platform-docs | #18 | 2026-03-29 12:33 | 完了 |
+| 1-C | CLI readline | feat/cli-readline | #19 | 2026-03-29 12:15 | 完了 |
+| 1-D | Web UI 強化 | feat/web-ui-enhancements | #20 | 2026-03-29 12:34 | 完了 |
+| 1-E | ダッシュボード | feat/dashboard-v2 | #22 | 2026-03-29 12:45 | 完了 |
+| 2-A | R7RS 準拠 | feat/r7rs-compliance | #26 | 2026-03-29 17:19 | 完了 |
+| — | CI修正・ドキュメント同期 | claude/finish-dashboard-tutorials-0hqce | #27 | 2026-03-29 20:52 | 完了 |
+| 3-A | テスト強化 | test/comprehensive-coverage | #29 | 2026-03-29 21:31 | 完了 |
+| 4-A | ロードマップ | docs/enhancement-roadmap | #28 | 2026-03-29 21:13 | 完了 |
 
 > 注記: Round 2-A（R7RS 準拠）は PR #26 で実装済みです。Task 2-A セクションにある「未対応→実装対象/部分対応→完全対応」の表は、実装前の計画を示す履歴として保持しています。
+>
+> マージ日は JST (UTC+9)。Round 1 の5タスクはサブエージェントにより並行実行された。

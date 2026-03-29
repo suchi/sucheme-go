@@ -1,5 +1,12 @@
 # Phase 4 実装戦略プラン
 
+| 項目 | 値 |
+|------|-----|
+| 作成日 | 2026-03-28 |
+| 完了日 | 2026-03-29 |
+| ステータス | 実装完了 |
+| 関連PR | #8 (parameterize/ports), #9 (call/cc/dynamic-wind), #12 (library system) |
+
 ## 概要
 
 Phase 4 では R7RS の残りの高度な機能を実装する。

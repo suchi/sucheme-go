@@ -1,5 +1,12 @@
 # CI/CD 修正計画
 
+| 項目 | 値 |
+|------|-----|
+| 作成日 | 2026-03-28 |
+| 完了日 | 2026-03-28 |
+| ステータス | 解決済み |
+| 関連PR | #12 (R7RS library system, CI/CD fix) |
+
 ## 問題
 
 全GitHub Actions CI/CDの `build-wasm` ジョブが失敗している。
