@@ -20,14 +20,23 @@
                       (cons (matrix-ref m i j) (loop-r (+ i 1)))))
                 (loop-c (+ j 1)))))))
 
+(define (map2 f xs ys)
+  (if (null? xs)
+      '()
+      (cons (f (car xs) (car ys))
+            (map2 f (cdr xs) (cdr ys)))))
+
 (define (matrix-add a b)
-  (map (lambda (ra rb) (map + ra rb)) a b))
+  (map2 (lambda (ra rb) (map2 + ra rb)) a b))
 
 (define (matrix-scale k m)
   (map (lambda (row) (map (lambda (x) (* k x)) row)) m))
 
 (define (dot-product a b)
-  (apply + (map * a b)))
+  (if (null? a)
+      0
+      (+ (* (car a) (car b))
+         (dot-product (cdr a) (cdr b)))))
 
 (define (matrix-multiply a b)
   (let ((bt (matrix-transpose b)))

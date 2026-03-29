@@ -6,12 +6,6 @@
   (let loop ((i 0))
     (if (= i size) '() (cons init (loop (+ i 1))))))
 
-(define (list-set lst idx val)
-  (let loop ((l lst) (i 0))
-    (if (null? l) '()
-        (cons (if (= i idx) val (car l))
-              (loop (cdr l) (+ i 1))))))
-
 (define (knapsack weights values capacity)
   (let ((n (length weights)))
     ; Build DP table: dp[i][w] = max value using items 0..i-1 with capacity w

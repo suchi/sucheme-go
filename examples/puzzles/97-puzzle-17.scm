@@ -1,6 +1,7 @@
 ; 97: Longest Common Subsequence (LCS)
 ; Find the longest subsequence common to two sequences.
-; Uses dynamic programming with memoization via closures.
+; lcs-length: bottom-up DP for computing length efficiently.
+; lcs: naive recursive reconstruction (exponential, for small inputs only).
 
 (define (lcs-length xs ys)
   (let ((m (length xs)) (n (length ys)))

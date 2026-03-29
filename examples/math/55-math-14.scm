@@ -18,14 +18,16 @@
         (modulo (car (cdr r)) m)
         #f)))  ; no inverse exists
 
-; Modular exponentiation: base^exp mod m
+; Modular exponentiation: base^exp mod m (exp must be a non-negative integer)
 (define (mod-pow base exp m)
-  (let loop ((base (modulo base m)) (exp exp) (result 1))
-    (cond ((= exp 0) result)
-          ((= 1 (modulo exp 2))
-           (loop (modulo (* base base) m) (quotient exp 2) (modulo (* result base) m)))
-          (else
-           (loop (modulo (* base base) m) (quotient exp 2) result)))))
+  (if (< exp 0)
+      (error "mod-pow: exponent must be a non-negative integer")
+      (let loop ((base (modulo base m)) (exp exp) (result 1))
+        (cond ((= exp 0) result)
+              ((= 1 (modulo exp 2))
+               (loop (modulo (* base base) m) (quotient exp 2) (modulo (* result base) m)))
+              (else
+               (loop (modulo (* base base) m) (quotient exp 2) result))))))
 
 (display "Extended GCD(35, 15): ") (display (extended-gcd 35 15)) (newline)
 (display "Extended GCD(120, 23): ") (display (extended-gcd 120 23)) (newline)
