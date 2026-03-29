@@ -97,7 +97,7 @@ go build -o sucheme ./cmd/sucheme/
 go build -o sucheme.exe ./cmd/sucheme/
 ```
 
-> **Note**: `go install` を使う場合は OS に応じた拡張子が自動付与されるため、`go install github.com/suchi/sucheme-go/cmd/sucheme@latest` がどのプラットフォームでも動作します。
+> **注**: `go install` を使う場合は OS に応じた拡張子が自動付与されるため、`go install github.com/suchi/sucheme-go/cmd/sucheme@latest` がどのプラットフォームでも動作します。
 
 ### WASM ビルド
 
@@ -112,7 +112,7 @@ $env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
 set GOOS=js&& set GOARCH=wasm&& go build -o web-ui/sucheme.wasm ./cmd/wasm/
 ```
 
-> **Note**: Windows では Git Bash や WSL を使えば Linux と同じコマンドが使えます。
+> **注**: Windows では Git Bash や WSL を使えば Linux と同じコマンドが使えます。
 
 ### テスト・ベンチマーク
 

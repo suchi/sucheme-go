@@ -660,17 +660,36 @@ R7RS の `define-library` でモジュールを定義できます。
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
 cp "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
 
-# WASM ビルド（Windows PowerShell）
-# $env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
-# Copy-Item "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
-# ※ Windows では Git Bash や WSL を使えば Linux と同じコマンドが使えます。
-
 # HTTP サーバーで配信
 # 注: .wasm の MIME タイプ (application/wasm) が必要です。
 # Python 3.9+ なら自動対応ですが、古いバージョンでは
 # WASM のロードに失敗する場合があります。
 cd web-ui && python3 -m http.server 8080
 ```
+
+<details>
+<summary>Windows (PowerShell) での WASM ビルド</summary>
+
+```powershell
+$env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
+
+# wasm_exec.js の場所は Go バージョンにより異なる
+$goRoot = go env GOROOT
+if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/misc/wasm/wasm_exec.js" web-ui/
+} elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
+} else {
+    Write-Error "wasm_exec.js not found under Go root."
+}
+
+cd web-ui
+python3 -m http.server 8080
+```
+
+</details>
+
+> **注**: Windows では Git Bash や WSL を使えば Linux/macOS と同じコマンドがそのまま使えます。
 
 ブラウザで `http://localhost:8080` を開くと Web REPL が使えます。
 

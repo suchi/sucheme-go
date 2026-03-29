@@ -109,8 +109,17 @@ python -m http.server 8000
 # WASM バイナリをビルド
 $env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
 
-# Go ランタイムの wasm_exec.js をコピー
-Copy-Item "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+# Go ランタイムの wasm_exec.js をコピー（Go のバージョンにより場所が異なる）
+$goRoot = go env GOROOT
+$wasmExecMisc = Join-Path $goRoot "misc\wasm\wasm_exec.js"
+$wasmExecLib = Join-Path $goRoot "lib\wasm\wasm_exec.js"
+if (Test-Path $wasmExecMisc) {
+    Copy-Item $wasmExecMisc web-ui/
+} elseif (Test-Path $wasmExecLib) {
+    Copy-Item $wasmExecLib web-ui/
+} else {
+    Write-Error "wasm_exec.js not found under Go root."
+}
 
 # ローカル HTTP サーバを起動
 cd web-ui
@@ -584,7 +593,13 @@ fi
 ```powershell
 # Windows (PowerShell)
 $env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
-Copy-Item "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+# wasm_exec.js の場所は Go バージョンにより異なる
+$goRoot = go env GOROOT
+if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/misc/wasm/wasm_exec.js" web-ui/
+} elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
+    Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
+}
 ```
 
 ### CI/CD
@@ -910,7 +925,12 @@ elif [ -f "$(go env GOROOT)/lib/wasm/wasm_exec.js" ]; then
   cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" web-ui/
 fi
 # Windows (PowerShell) の場合:
-# Copy-Item "$(go env GOROOT)/misc/wasm/wasm_exec.js" web-ui/
+# $goRoot = go env GOROOT
+# if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
+#   Copy-Item "$goRoot/misc/wasm/wasm_exec.js" web-ui/
+# } elseif (Test-Path "$goRoot/lib/wasm/wasm_exec.js") {
+#   Copy-Item "$goRoot/lib/wasm/wasm_exec.js" web-ui/
+# }
 ```
 
 ### 循環依存エラー (`import cycle not allowed`)
