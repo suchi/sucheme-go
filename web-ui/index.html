@@ -10,6 +10,23 @@
     <header>
         <h1>Sucheme</h1>
         <p class="subtitle">R7RS Scheme Interpreter</p>
+        <div id="toolbar">
+            <div class="toolbar-group">
+                <label class="toolbar-label" for="keybind-select">Keys:</label>
+                <select id="keybind-select" title="Keybinding mode">
+                    <option value="emacs">Emacs</option>
+                    <option value="vi">vi</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+            <div class="toolbar-group">
+                <button id="theme-toggle-btn" type="button" title="Toggle dark/light theme">Light</button>
+            </div>
+            <div class="toolbar-group">
+                <button id="font-decrease-btn" type="button" title="Decrease font size">A-</button>
+                <button id="font-increase-btn" type="button" title="Increase font size">A+</button>
+            </div>
+        </div>
         <nav>
             <a href="https://github.com/suchi/sucheme-go" target="_blank" rel="noopener noreferrer">GitHub</a>
         </nav>
@@ -22,12 +39,22 @@
         </div>
 
         <div id="repl" class="hidden">
-            <div id="output" aria-label="REPL output"></div>
+            <div id="output-container">
+                <div id="output" aria-label="REPL output"></div>
+                <div id="output-controls">
+                    <button id="copy-output-btn" type="button" title="Copy output to clipboard">Copy</button>
+                    <button id="clear-output-btn" type="button" title="Clear output">Clear</button>
+                </div>
+            </div>
             <div id="input-area">
-                <label for="input" class="sr-only">Scheme expression</label>
-                <textarea id="input" placeholder="Type a Scheme expression..." rows="3" spellcheck="false"></textarea>
+                <div id="input-wrapper">
+                    <label for="input" class="sr-only">Scheme expression</label>
+                    <textarea id="input" placeholder="Type a Scheme expression..." rows="3" spellcheck="false"></textarea>
+                    <div id="highlight-overlay" aria-hidden="true"></div>
+                </div>
+                <div id="vi-mode-indicator" class="hidden">-- INSERT --</div>
                 <div id="input-controls">
-                    <span class="hint">Ctrl+Enter to evaluate</span>
+                    <span class="hint">Ctrl+Enter to evaluate | :help for commands</span>
                     <button id="eval-btn" type="button">Evaluate</button>
                 </div>
             </div>
