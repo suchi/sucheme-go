@@ -4,6 +4,7 @@ package evaluator
 import (
 	"fmt"
 
+	"github.com/suchi/sucheme-go/pkg/builtin"
 	"github.com/suchi/sucheme-go/pkg/env"
 	"github.com/suchi/sucheme-go/pkg/parser"
 	"github.com/suchi/sucheme-go/pkg/types"
@@ -1000,6 +1001,10 @@ func evalBodyTCO(body []*types.Value, e *env.Env) (*evalResult, error) {
 // This must be called after builtin.RegisterBuiltins since apply needs
 // access to the evaluator's applyProc to support both builtins and lambdas.
 func RegisterApply(e *env.Env) {
+	// Initialize EvalApply so builtin functions (assoc, member with custom
+	// comparators) can invoke user-defined procedures.
+	builtin.EvalApply = callProc
+
 	e.Define("apply", types.NewProcedure("apply", func(args []*types.Value) (*types.Value, error) {
 		if len(args) < 2 {
 			return nil, fmt.Errorf("expected at least 2 arguments")

@@ -8,8 +8,15 @@ import (
 	"strings"
 
 	"github.com/suchi/sucheme-go/pkg/env"
+	"github.com/suchi/sucheme-go/pkg/parser"
 	"github.com/suchi/sucheme-go/pkg/types"
 )
+
+// EvalApply is a function that applies a procedure to arguments.
+// It must be set by the evaluator during initialization so that
+// builtin functions (e.g., assoc, member with custom comparators) can
+// invoke user-defined procedures.
+var EvalApply func(proc *types.Value, args []*types.Value) (*types.Value, error)
 
 // RegisterBuiltins registers all built-in procedures into the given environment.
 func RegisterBuiltins(e *env.Env) {
@@ -591,19 +598,43 @@ func registerComparison(e *env.Env) {
 	}))
 
 	e.Define("assoc", types.NewProcedure("assoc", func(args []*types.Value) (*types.Value, error) {
-		if len(args) != 2 {
-			return nil, fmt.Errorf("expected 2 arguments")
+		if len(args) < 2 || len(args) > 3 {
+			return nil, fmt.Errorf("expected 2 or 3 arguments, got %d", len(args))
 		}
 		key := args[0]
 		lst, err := args[1].ToList()
 		if err != nil {
 			return nil, fmt.Errorf("expected list")
 		}
+		var compare func(a, b *types.Value) (bool, error)
+		if len(args) == 3 {
+			if args[2].Type != types.TypeProcedure {
+				return nil, fmt.Errorf("expected procedure as 3rd argument, got %s", args[2].Type)
+			}
+			if EvalApply == nil {
+				return nil, fmt.Errorf("EvalApply not initialized")
+			}
+			compare = func(a, b *types.Value) (bool, error) {
+				result, err := EvalApply(args[2], []*types.Value{a, b})
+				if err != nil {
+					return false, err
+				}
+				return result.IsTrue(), nil
+			}
+		} else {
+			compare = func(a, b *types.Value) (bool, error) {
+				return a.Equal(b), nil
+			}
+		}
 		for _, pair := range lst {
 			if pair.Type != types.TypePair {
 				return nil, fmt.Errorf("expected list of pairs")
 			}
-			if key.Equal(pair.PairVal.Car) {
+			match, err := compare(key, pair.PairVal.Car)
+			if err != nil {
+				return nil, err
+			}
+			if match {
 				return pair, nil
 			}
 		}
@@ -651,15 +682,39 @@ func registerComparison(e *env.Env) {
 	}))
 
 	e.Define("member", types.NewProcedure("member", func(args []*types.Value) (*types.Value, error) {
-		if len(args) != 2 {
-			return nil, fmt.Errorf("expected 2 arguments")
+		if len(args) < 2 || len(args) > 3 {
+			return nil, fmt.Errorf("expected 2 or 3 arguments, got %d", len(args))
 		}
 		if args[1].Type != types.TypePair && args[1].Type != types.TypeNil {
 			return nil, fmt.Errorf("expected list")
 		}
+		var compare func(a, b *types.Value) (bool, error)
+		if len(args) == 3 {
+			if args[2].Type != types.TypeProcedure {
+				return nil, fmt.Errorf("expected procedure as 3rd argument, got %s", args[2].Type)
+			}
+			if EvalApply == nil {
+				return nil, fmt.Errorf("EvalApply not initialized")
+			}
+			compare = func(a, b *types.Value) (bool, error) {
+				result, err := EvalApply(args[2], []*types.Value{a, b})
+				if err != nil {
+					return false, err
+				}
+				return result.IsTrue(), nil
+			}
+		} else {
+			compare = func(a, b *types.Value) (bool, error) {
+				return a.Equal(b), nil
+			}
+		}
 		cur := args[1]
 		for cur.Type == types.TypePair {
-			if args[0].Equal(cur.PairVal.Car) {
+			match, err := compare(args[0], cur.PairVal.Car)
+			if err != nil {
+				return nil, err
+			}
+			if match {
 				return cur, nil
 			}
 			cur = cur.PairVal.Cdr
@@ -1167,6 +1222,33 @@ func registerString(e *env.Env) {
 		return types.NewString(args[0].StrVal), nil
 	}))
 
+	// string-set! mutates a string at a given index.
+	// NOTE: Go strings are immutable, so this creates a new string and stores it
+	// back into the same Value. Other references to the original string Value
+	// will NOT see the mutation. This is a known limitation.
+	e.Define("string-set!", types.NewProcedure("string-set!", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 3 {
+			return nil, fmt.Errorf("expected 3 arguments (string, index, char), got %d", len(args))
+		}
+		if args[0].Type != types.TypeString {
+			return nil, fmt.Errorf("expected a string as 1st argument, got %s", args[0].Type)
+		}
+		if args[1].Type != types.TypeInteger {
+			return nil, fmt.Errorf("expected an integer index as 2nd argument, got %s", args[1].Type)
+		}
+		if args[2].Type != types.TypeCharacter {
+			return nil, fmt.Errorf("expected a character as 3rd argument, got %s", args[2].Type)
+		}
+		runes := []rune(args[0].StrVal)
+		idx := args[1].IntVal
+		if idx < 0 || idx >= int64(len(runes)) {
+			return nil, fmt.Errorf("string index out of range: %d (length %d)", idx, len(runes))
+		}
+		runes[idx] = args[2].CharVal
+		args[0].StrVal = string(runes)
+		return types.Void(), nil
+	}))
+
 	e.Define("make-string", types.NewProcedure("make-string", func(args []*types.Value) (*types.Value, error) {
 		if len(args) < 1 || args[0].Type != types.TypeInteger {
 			return nil, fmt.Errorf("expected integer length")
@@ -1495,6 +1577,14 @@ func registerBytevector(e *env.Env) {
 	}))
 }
 
+// DefaultInputPort is the default current-input-port (stdin placeholder).
+// In the builtin package, this is a sentinel string port. The evaluator
+// may replace this with a real stdin port.
+var DefaultInputPort = &types.Value{Type: types.TypePort}
+
+// DefaultOutputPort is the default current-output-port (stdout placeholder).
+var DefaultOutputPort = &types.Value{Type: types.TypePort}
+
 func registerIO(e *env.Env) {
 	e.Define("display", types.NewProcedure("display", func(args []*types.Value) (*types.Value, error) {
 		if len(args) < 1 {
@@ -1522,4 +1612,80 @@ func registerIO(e *env.Env) {
 		}
 		return types.Void(), nil
 	}))
+
+	e.Define("current-input-port", types.NewProcedure("current-input-port", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 0 {
+			return nil, fmt.Errorf("expected 0 arguments, got %d", len(args))
+		}
+		return DefaultInputPort, nil
+	}))
+
+	e.Define("current-output-port", types.NewProcedure("current-output-port", func(args []*types.Value) (*types.Value, error) {
+		if len(args) != 0 {
+			return nil, fmt.Errorf("expected 0 arguments, got %d", len(args))
+		}
+		return DefaultOutputPort, nil
+	}))
+
+	// read: reads an S-expression from a port (or string port).
+	// With no args, returns eof (stdin not supported in builtin package).
+	// With a port arg, reads from the port's reader via the parser.
+	e.Define("read", types.NewProcedure("read", func(args []*types.Value) (*types.Value, error) {
+		if len(args) > 1 {
+			return nil, fmt.Errorf("expected 0 or 1 argument, got %d", len(args))
+		}
+		if len(args) == 0 {
+			// No port given; cannot read from stdin in pure builtin context
+			return types.Eof(), nil
+		}
+		if args[0].Type != types.TypePort {
+			return nil, fmt.Errorf("expected a port, got %s", args[0].Type)
+		}
+		portVal := args[0].PortVal
+		if portVal == nil {
+			return nil, fmt.Errorf("invalid port")
+		}
+		// Use the ReadablePort interface to extract remaining content from the port.
+		rp, ok := portVal.(ReadablePort)
+		if !ok {
+			return nil, fmt.Errorf("port does not support reading")
+		}
+		if rp.IsClosed() {
+			return nil, fmt.Errorf("port is closed")
+		}
+		// Read all remaining bytes from the port's reader
+		var sb strings.Builder
+		for {
+			b, err := rp.GetReader().ReadByte()
+			if err != nil {
+				break
+			}
+			sb.WriteByte(b)
+		}
+		content := sb.String()
+		if content == "" {
+			return types.Eof(), nil
+		}
+		p := parser.New(content)
+		val, err := p.Parse()
+		if err != nil {
+			return nil, fmt.Errorf("read: parse error: %v", err)
+		}
+		if val == nil {
+			return types.Eof(), nil
+		}
+		return val, nil
+	}))
+}
+
+// ReadablePort is an interface for ports that support reading.
+// The evaluator's Port type should satisfy this interface.
+type ReadablePort interface {
+	GetReader() ByteReader
+	IsClosed() bool
+}
+
+// ByteReader reads one byte at a time.
+type ByteReader interface {
+	ReadByte() (byte, error)
 }

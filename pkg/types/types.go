@@ -29,6 +29,7 @@ const (
 	TypeSyntaxRules
 	TypeUndefined
 	TypeBytevector
+	TypeRecord
 )
 
 // String returns the name of the value type.
@@ -70,6 +71,8 @@ func (t ValueType) String() string {
 		return "undefined"
 	case TypeBytevector:
 		return "bytevector"
+	case TypeRecord:
+		return "record"
 	default:
 		return "unknown"
 	}
@@ -95,6 +98,7 @@ type Value struct {
 	ValuesVal []*Value      // for TypeValues (multiple return values)
 	SyntaxVal *SyntaxRules  // for TypeSyntaxRules
 	PortVal   any           // for TypePort (points to evaluator.Port)
+	RecordVal *Record       // for TypeRecord
 }
 
 // Pair is a cons cell.
@@ -132,6 +136,20 @@ type SyntaxRules struct {
 type SyntaxRule struct {
 	Pattern  *Value // the pattern S-expression
 	Template *Value // the template S-expression
+}
+
+// Record represents a record instance with a type tag and named fields.
+// Descriptor is an opaque pointer used by the evaluator to distinguish
+// record types that happen to share the same name.
+type Record struct {
+	TypeName   string
+	Fields     map[string]*Value
+	Descriptor any // *evaluator.recordTypeDescriptor (opaque to types package)
+}
+
+// NewRecord creates a record value.
+func NewRecord(typeName string, fields map[string]*Value) *Value {
+	return &Value{Type: TypeRecord, RecordVal: &Record{TypeName: typeName, Fields: fields}}
 }
 
 // NewSyntaxRules creates a syntax-rules value.
@@ -483,6 +501,11 @@ func (v *Value) String() string {
 		return "#<undefined>"
 	case TypeBytevector:
 		return formatBytevector(v.ByteVec)
+	case TypeRecord:
+		if v.RecordVal != nil {
+			return fmt.Sprintf("#<%s>", v.RecordVal.TypeName)
+		}
+		return "#<record>"
 	default:
 		return "#<unknown>"
 	}
