@@ -5,93 +5,951 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sucheme - Test & Coverage Dashboard</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #0d1117; color: #c9d1d9; }
-    h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
-    h2 { color: #79c0ff; margin-top: 30px; }
-    a { color: #58a6ff; text-decoration: none; }
+    /* ===== Theme variables (based on Web UI style.css palette) ===== */
+    :root {
+      --bg-primary: #1a1b26;
+      --bg-secondary: #24283b;
+      --bg-card: #1f2335;
+      --text-primary: #c0caf5;
+      --text-secondary: #565f89;
+      --text-accent: #7aa2f7;
+      --text-result: #9ece6a;
+      --text-error: #f7768e;
+      --text-warn: #e0af68;
+      --text-orange: #ff9e64;
+      --border-color: #3b4261;
+      --btn-bg: #7aa2f7;
+      --btn-hover: #89b4fa;
+      --btn-text: #1a1b26;
+      --bar-track: #30363d;
+      --green: #9ece6a;
+      --yellow: #e0af68;
+      --orange: #ff9e64;
+      --red: #f7768e;
+      --blue: #7aa2f7;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg-primary: #f5f5f5;
+        --bg-secondary: #ffffff;
+        --bg-card: #ffffff;
+        --text-primary: #24283b;
+        --text-secondary: #6b7280;
+        --text-accent: #4f6dc8;
+        --text-result: #16a34a;
+        --text-error: #dc2626;
+        --text-warn: #ca8a04;
+        --text-orange: #ea580c;
+        --border-color: #d1d5db;
+        --btn-bg: #4f6dc8;
+        --btn-hover: #6b85d6;
+        --btn-text: #ffffff;
+        --bar-track: #e5e7eb;
+        --green: #16a34a;
+        --yellow: #ca8a04;
+        --orange: #ea580c;
+        --red: #dc2626;
+        --blue: #4f6dc8;
+      }
+    }
+
+    /* ===== Reset & Base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    a { color: var(--text-accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 15px 0; }
-    .links { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
-    .links a { padding: 8px 16px; background: #21262d; border: 1px solid #30363d; border-radius: 6px; }
-    .links a:hover { background: #30363d; }
-    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #30363d; }
-    th { color: #8b949e; }
-    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
-    .stat { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; text-align: center; }
-    .stat-value { font-size: 2em; font-weight: bold; color: #58a6ff; }
-    .stat-label { color: #8b949e; margin-top: 5px; }
-    .green { color: #3fb950; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px 60px; }
+
+    /* ===== Header ===== */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border-color);
+      padding: 20px 0;
+      margin-bottom: 30px;
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .header h1 {
+      font-size: 1.8em;
+      color: var(--text-accent);
+      margin-bottom: 4px;
+    }
+    .header .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.95em;
+    }
+
+    /* ===== Breadcrumb ===== */
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+    .breadcrumb a { color: var(--text-accent); }
+    .breadcrumb .sep { color: var(--text-secondary); }
+
+    /* ===== Nav links ===== */
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .nav-links a {
+      padding: 8px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.9em;
+      transition: background 0.15s;
+    }
+    .nav-links a:hover { background: var(--border-color); text-decoration: none; }
+
+    /* Page-internal anchors */
+    .anchor-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .anchor-links a {
+      padding: 6px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      font-size: 0.85em;
+    }
+    .anchor-links a:hover { background: var(--border-color); text-decoration: none; }
+
+    /* ===== Grid layout ===== */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 700px) {
+      .grid-2col { grid-template-columns: 1fr; }
+    }
+
+    /* ===== Card ===== */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .card h3 {
+      color: var(--text-accent);
+      font-size: 1.2em;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+    .card h4 {
+      color: var(--text-primary);
+      font-size: 1em;
+      margin: 12px 0 8px;
+    }
+
+    /* ===== Utility classes (reduce inline styles) ===== */
+    .muted-text {
+      font-size: 0.85em;
+      color: var(--text-secondary);
+    }
+    .card-note {
+      font-size: 0.75em;
+      color: var(--text-secondary);
+      margin-top: 8px;
+      font-style: italic;
+    }
+    .card-note-lg {
+      font-size: 0.75em;
+      color: var(--text-secondary);
+      margin-top: 12px;
+      font-style: italic;
+    }
+    .card-spaced {
+      margin-bottom: 28px;
+    }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .r7rs-summary {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .r7rs-count {
+      text-align: center;
+    }
+    .r7rs-count-value {
+      font-size: 2.2em;
+      font-weight: 700;
+    }
+    .r7rs-count-label {
+      font-size: 0.8em;
+      color: var(--text-secondary);
+    }
+    .r7rs-bar-area {
+      flex: 1;
+      min-width: 200px;
+    }
+    .bench-desc {
+      margin-bottom: 12px;
+    }
+    .td-muted {
+      color: var(--text-secondary);
+    }
+    .td-pass {
+      color: var(--green);
+    }
+
+    /* ===== Stat cards (hero numbers) ===== */
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2.6em;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .stat-label {
+      color: var(--text-secondary);
+      font-size: 0.85em;
+      margin-top: 6px;
+    }
+    .stat-note {
+      color: var(--text-secondary);
+      font-size: 0.75em;
+      margin-top: 4px;
+      font-style: italic;
+    }
+    .color-green  { color: var(--green); }
+    .color-blue   { color: var(--blue); }
+    .color-yellow { color: var(--yellow); }
+    .color-orange { color: var(--orange); }
+    .color-red    { color: var(--red); }
+
+    /* ===== Donut chart (CSS conic-gradient, set dynamically via minimal JS) ===== */
+    .donut-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .donut {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      position: relative;
+      /* Default track background; JS overrides with colored conic-gradient when data is available */
+      background: conic-gradient(var(--bar-track) 0turn 1turn);
+    }
+    .donut-hole {
+      position: absolute;
+      top: 24px; left: 24px;
+      width: 112px; height: 112px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+    .donut-pct {
+      font-size: 1.8em;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .donut-label {
+      font-size: 0.7em;
+      color: var(--text-secondary);
+    }
+
+    /* ===== Progress bars ===== */
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .progress-name {
+      flex: 0 0 150px;
+      font-size: 0.85em;
+      text-align: right;
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .progress-bar-track {
+      flex: 1;
+      height: 18px;
+      background: var(--bar-track);
+      border-radius: 9px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 9px;
+      transition: width 0.5s ease;
+    }
+    .progress-pct {
+      flex: 0 0 50px;
+      font-size: 0.85em;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    /* Progress bar color classes */
+    .bar-green  { background: var(--green); }
+    .bar-yellow { background: var(--yellow); }
+    .bar-orange { background: var(--orange); }
+    .bar-red    { background: var(--red); }
+    .pct-green  { color: var(--green); }
+    .pct-yellow { color: var(--yellow); }
+    .pct-orange { color: var(--orange); }
+    .pct-red    { color: var(--red); }
+    .progress-bar-sm { height: 12px; }
+    .bg-green  { background: var(--green); }
+    .bg-yellow { background: var(--yellow); }
+    .bg-red    { background: var(--red); }
+
+    /* ===== Tables ===== */
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 0.9em; }
+    th { color: var(--text-secondary); font-weight: 600; }
+
+    /* ===== R7RS compliance stacked bar ===== */
+    .stacked-bar {
+      display: flex;
+      height: 28px;
+      border-radius: 6px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+    .stacked-bar > div { display: flex; align-items: center; justify-content: center; font-size: 0.75em; font-weight: 600; color: #fff; }
+    .stacked-done    { background: var(--green); }
+    .stacked-partial { background: var(--yellow); color: #1a1b26 !important; }
+    .stacked-none    { background: var(--red); }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin: 10px 0;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85em;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* ===== Footer ===== */
+    .footer {
+      margin-top: 40px;
+      padding: 20px 0;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      font-size: 0.8em;
+      color: var(--text-secondary);
+    }
+
+    /* ===== Section heading ===== */
+    .section-heading {
+      color: var(--text-accent);
+      font-size: 1.4em;
+      margin: 32px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border-color);
+      scroll-margin-top: 20px;
+    }
+
+    /* ===== Timestamp ===== */
+    .timestamp {
+      display: inline-block;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 0.8em;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
-  <h1>Sucheme - Test & Coverage Dashboard</h1>
 
-  <div class="links">
-    <a href="index.html">Web REPL</a>
-    <a href="coverage.html">Coverage Report (detailed)</a>
-    <a href="https://github.com/suchi/sucheme-go">GitHub</a>
-    <a href="https://github.com/suchi/sucheme-go/actions">CI/CD Actions</a>
-  </div>
-
-  <!-- Summary cards -->
-  <div class="summary">
-    <div class="stat">
-      <div class="stat-value green">400+</div>
-      <div class="stat-label">Passing Tests (approx.)</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value green">3</div>
-      <div class="stat-label">Platforms (Linux/macOS/Windows)</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value">100+</div>
-      <div class="stat-label">Example Programs (approx.)</div>
-    </div>
-    <div class="stat">
-      <div class="stat-value">100+</div>
-      <div class="stat-label">Built-in Functions (approx.)</div>
+  <!-- ===== Header ===== -->
+  <div class="header">
+    <div class="header-inner">
+      <h1>Sucheme Dashboard</h1>
+      <p class="subtitle">Test & Coverage &mdash; R7RS Scheme Interpreter in Go</p>
     </div>
   </div>
 
-  <div class="card">
-    <h2>Coverage</h2>
-    <p>Full interactive coverage report: <a href="coverage.html">coverage.html</a></p>
-    <p>Coverage is generated on every push to main and includes all packages:</p>
-    <table>
-      <tr><th>Package</th><th>Description</th></tr>
-      <tr><td>pkg/types</td><td>Scheme value types</td></tr>
-      <tr><td>pkg/lexer</td><td>Tokenizer</td></tr>
-      <tr><td>pkg/parser</td><td>S-expression parser</td></tr>
-      <tr><td>pkg/env</td><td>Environment (scope chain)</td></tr>
-      <tr><td>pkg/evaluator</td><td>Evaluator (TCO, macros, exceptions, ports, continuations, libraries)</td></tr>
-      <tr><td>pkg/builtin</td><td>100+ built-in functions</td></tr>
-    </table>
+  <div class="container">
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="index.html">Sucheme</a>
+      <span class="sep">/</span>
+      <span>Dashboard</span>
+    </nav>
+
+    <!-- Navigation links -->
+    <div class="nav-links">
+      <a href="index.html">Web REPL</a>
+      <a href="coverage.html">Coverage Report (detailed)</a>
+      <a href="https://github.com/suchi/sucheme-go">GitHub</a>
+      <a href="https://github.com/suchi/sucheme-go/actions">CI/CD Actions</a>
+    </div>
+
+    <!-- Page-internal anchors -->
+    <div class="anchor-links">
+      <a href="#coverage">Coverage</a>
+      <a href="#tests">Tests</a>
+      <a href="#r7rs">R7RS Compliance</a>
+      <a href="#benchmarks">Benchmarks</a>
+      <a href="#cicd">CI/CD Pipeline</a>
+    </div>
+
+    <!-- Timestamp: injected by CI in pages.yml (see that file for implementation) -->
+    <div class="timestamp" id="build-timestamp">Last build: __BUILD_TIMESTAMP__</div>
+
+    <!-- ============================================================= -->
+    <!-- Hero stat cards                                                -->
+    <!-- ============================================================= -->
+    <div class="grid">
+      <div class="stat-card">
+        <!-- TODO (CI integration): inject real test count via pages.yml using id="stat-tests" -->
+        <div class="stat-value color-green" id="stat-tests">400+</div>
+        <div class="stat-label">Passing Tests</div>
+        <div class="stat-note">(approx. &mdash; see CI for exact count)</div>
+      </div>
+      <div class="stat-card">
+        <!-- Coverage %: injected by CI in pages.yml -->
+        <div class="stat-value" id="stat-coverage">--</div>
+        <div class="stat-label">Total Coverage</div>
+        <div class="stat-note">(approx. &mdash; see CI for exact value)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value color-blue">3</div>
+        <div class="stat-label">Platforms</div>
+        <div class="stat-note">Linux / macOS / Windows</div>
+      </div>
+      <div class="stat-card">
+        <!-- Static approximation -->
+        <div class="stat-value color-blue">100+</div>
+        <div class="stat-label">Built-in Functions</div>
+        <div class="stat-note">(approx.)</div>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- SECTION: Coverage                                              -->
+    <!-- ============================================================= -->
+    <h2 class="section-heading" id="coverage">Coverage</h2>
+
+    <div class="grid-2col">
+      <!-- Donut chart -->
+      <div class="card">
+        <h3>Overall Coverage</h3>
+        <div class="donut-container">
+          <!-- Overall coverage: injected by CI in pages.yml -->
+          <div class="donut" id="donut-chart">
+            <div class="donut-hole">
+              <span class="donut-pct" id="donut-pct">--%</span>
+              <span class="donut-label">coverage</span>
+            </div>
+          </div>
+          <p class="muted-text">
+            Full interactive report: <a href="coverage.html">coverage.html</a>
+          </p>
+        </div>
+      </div>
+
+      <!-- Per-package progress bars -->
+      <div class="card">
+        <h3>Package Coverage</h3>
+        <!-- TODO (CI integration): inject per-package coverage via pages.yml -->
+        <div id="pkg-coverage-bars">
+          <!-- These values are approximate defaults; CI should overwrite them -->
+          <div class="progress-row">
+            <span class="progress-name">pkg/types</span>
+            <div class="progress-bar-track"><div class="progress-bar-fill bar-green" style="width:85%" id="cov-types"></div></div>
+            <span class="progress-pct pct-green">~85%</span>
+          </div>
+          <div class="progress-row">
+            <span class="progress-name">pkg/lexer</span>
+            <div class="progress-bar-track"><div class="progress-bar-fill bar-green" style="width:90%" id="cov-lexer"></div></div>
+            <span class="progress-pct pct-green">~90%</span>
+          </div>
+          <div class="progress-row">
+            <span class="progress-name">pkg/parser</span>
+            <div class="progress-bar-track"><div class="progress-bar-fill bar-green" style="width:85%" id="cov-parser"></div></div>
+            <span class="progress-pct pct-green">~85%</span>
+          </div>
+          <div class="progress-row">
+            <span class="progress-name">pkg/env</span>
+            <div class="progress-bar-track"><div class="progress-bar-fill bar-green" style="width:80%" id="cov-env"></div></div>
+            <span class="progress-pct pct-green">~80%</span>
+          </div>
+          <div class="progress-row">
+            <span class="progress-name">pkg/evaluator</span>
+            <div class="progress-bar-track"><div class="progress-bar-fill bar-yellow" style="width:70%" id="cov-evaluator"></div></div>
+            <span class="progress-pct pct-yellow">~70%</span>
+          </div>
+          <div class="progress-row">
+            <span class="progress-name">pkg/builtin</span>
+            <div class="progress-bar-track"><div class="progress-bar-fill bar-yellow" style="width:75%" id="cov-builtin"></div></div>
+            <span class="progress-pct pct-yellow">~75%</span>
+          </div>
+        </div>
+        <p class="card-note-lg">
+          Values prefixed with ~ are currently static approximations. CI-driven per-package coverage injection is planned.
+        </p>
+      </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- SECTION: Tests                                                 -->
+    <!-- ============================================================= -->
+    <h2 class="section-heading" id="tests">Tests</h2>
+
+    <div class="card card-spaced">
+      <h3>Test Results by Package</h3>
+      <!-- TODO (CI integration): inject per-package test counts via pages.yml -->
+      <table>
+        <thead>
+          <tr>
+            <th>Package</th>
+            <th>Description</th>
+            <th class="text-right">Tests</th>
+            <th class="text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody id="test-table-body">
+          <tr>
+            <td>pkg/types</td>
+            <td>Scheme value types</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
+          </tr>
+          <tr>
+            <td>pkg/lexer</td>
+            <td>Tokenizer</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
+          </tr>
+          <tr>
+            <td>pkg/parser</td>
+            <td>S-expression parser</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
+          </tr>
+          <tr>
+            <td>pkg/env</td>
+            <td>Environment (scope chain)</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
+          </tr>
+          <tr>
+            <td>pkg/evaluator</td>
+            <td>Evaluator (TCO, macros, exceptions, continuations)</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
+          </tr>
+          <tr>
+            <td>pkg/builtin</td>
+            <td>100+ built-in functions</td>
+            <td class="text-right">--</td>
+            <td class="text-center td-pass">PASS</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="card-note">
+        Test counts (--) are placeholders. See the
+        <a href="https://github.com/suchi/sucheme-go/actions">Actions tab</a>
+        for exact test results.
+      </p>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- SECTION: R7RS Compliance                                       -->
+    <!-- ============================================================= -->
+    <h2 class="section-heading" id="r7rs">R7RS Compliance</h2>
+
+    <div class="card card-spaced">
+      <h3>Overall Compliance</h3>
+
+      <!-- Counts from docs/r7rs-compliance.md: 81 done, 10 partial, 10 not done = 101 total -->
+      <div class="r7rs-summary">
+        <div class="r7rs-count">
+          <div class="r7rs-count-value color-green">81</div>
+          <div class="r7rs-count-label">Done</div>
+        </div>
+        <div class="r7rs-count">
+          <div class="r7rs-count-value color-yellow">10</div>
+          <div class="r7rs-count-label">Partial</div>
+        </div>
+        <div class="r7rs-count">
+          <div class="r7rs-count-value color-red">10</div>
+          <div class="r7rs-count-label">Not yet</div>
+        </div>
+        <div class="r7rs-bar-area">
+          <div class="muted-text" style="margin-bottom:4px;">Overall progress: 80.2% done / 9.9% partial / 9.9% not yet</div>
+          <div class="stacked-bar">
+            <div class="stacked-done" style="width:80.2%;">80%</div>
+            <div class="stacked-partial" style="width:9.9%;">10%</div>
+            <div class="stacked-none" style="width:9.9%;">10%</div>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot bg-green"></div> Done</div>
+            <div class="legend-item"><div class="legend-dot bg-yellow"></div> Partial</div>
+            <div class="legend-item"><div class="legend-dot bg-red"></div> Not yet</div>
+          </div>
+        </div>
+      </div>
+
+      <h4>By Category</h4>
+      <table>
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th class="text-center">Done</th>
+            <th class="text-center">Partial</th>
+            <th class="text-center">Not yet</th>
+            <th>Progress</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Data extracted from docs/r7rs-compliance.md -->
+          <tr>
+            <td>Special forms</td>
+            <td class="text-center">24</td>
+            <td class="text-center">2</td>
+            <td class="text-center">4</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:80%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Exception handling</td>
+            <td class="text-center">7</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:100%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Numerics</td>
+            <td class="text-center">12</td>
+            <td class="text-center">0</td>
+            <td class="text-center">2</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:85.7%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Lists</td>
+            <td class="text-center">10</td>
+            <td class="text-center">3</td>
+            <td class="text-center">0</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:76.9%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Strings</td>
+            <td class="text-center">7</td>
+            <td class="text-center">0</td>
+            <td class="text-center">1</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:87.5%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Characters</td>
+            <td class="text-center">4</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:100%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Vectors</td>
+            <td class="text-center">4</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:100%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Bytevectors</td>
+            <td class="text-center">3</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:100%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Booleans & equality</td>
+            <td class="text-center">4</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:100%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>I/O</td>
+            <td class="text-center">6</td>
+            <td class="text-center">4</td>
+            <td class="text-center">2</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-yellow" style="width:50%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Continuations</td>
+            <td class="text-center">1</td>
+            <td class="text-center">2</td>
+            <td class="text-center">0</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-orange" style="width:33.3%;"></div>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>Library system</td>
+            <td class="text-center">4</td>
+            <td class="text-center">0</td>
+            <td class="text-center">0</td>
+            <td>
+              <div class="progress-bar-track progress-bar-sm">
+                <div class="progress-bar-fill bar-green" style="width:100%;"></div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="card-note">
+        Data sourced from <a href="https://github.com/suchi/sucheme-go/blob/main/docs/r7rs-compliance.md">docs/r7rs-compliance.md</a>.
+      </p>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- SECTION: Benchmarks                                            -->
+    <!-- ============================================================= -->
+    <h2 class="section-heading" id="benchmarks">Benchmarks</h2>
+
+    <div class="card card-spaced">
+      <h3>Performance Benchmarks</h3>
+      <p class="muted-text bench-desc">
+        Benchmarks run on every push. Results available in
+        <a href="https://github.com/suchi/sucheme-go/actions/workflows/ci.yml">Actions artifacts</a>.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Benchmark</th>
+            <th>Description</th>
+            <th class="text-right">Typical Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>BenchmarkTakeuchi</td>
+            <td>tak(18, 12, 6) &mdash; classic recursive</td>
+            <td class="text-right td-muted">--</td>
+          </tr>
+          <tr>
+            <td>BenchmarkFibonacci</td>
+            <td>fib(20) &mdash; naive recursive</td>
+            <td class="text-right td-muted">--</td>
+          </tr>
+          <tr>
+            <td>BenchmarkTailRecursion</td>
+            <td>100k iteration loop &mdash; TCO verification</td>
+            <td class="text-right td-muted">--</td>
+          </tr>
+          <tr>
+            <td>BenchmarkListOperations</td>
+            <td>1000 elements list + reverse</td>
+            <td class="text-right td-muted">--</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="card-note">
+        Benchmark times (--) are placeholders. See CI artifacts for the latest numbers.
+      </p>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- SECTION: CI/CD Pipeline                                        -->
+    <!-- ============================================================= -->
+    <h2 class="section-heading" id="cicd">CI/CD Pipeline</h2>
+
+    <div class="card card-spaced">
+      <h3>Pipeline Overview</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Platform</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>test</td>
+            <td>ubuntu / macos / windows</td>
+            <td>Unit tests + go vet + CLI build</td>
+          </tr>
+          <tr>
+            <td>coverage</td>
+            <td>ubuntu</td>
+            <td>Coverage report + badge + PR comment</td>
+          </tr>
+          <tr>
+            <td>benchmark</td>
+            <td>ubuntu</td>
+            <td>Takeuchi, Fibonacci, TCO, List benchmarks</td>
+          </tr>
+          <tr>
+            <td>build-wasm</td>
+            <td>ubuntu</td>
+            <td>WebAssembly build (CI)</td>
+          </tr>
+          <tr>
+            <td>build</td>
+            <td>ubuntu</td>
+            <td>WASM + coverage + dashboard (Pages)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p>Sucheme &mdash; R7RS Scheme Interpreter in Go</p>
+      <p>
+        <a href="index.html">Web REPL</a> &middot;
+        <a href="coverage.html">Coverage</a> &middot;
+        <a href="https://github.com/suchi/sucheme-go">GitHub</a>
+      </p>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>CI/CD Pipeline</h2>
-    <table>
-      <tr><th>Job</th><th>Platform</th><th>Description</th></tr>
-      <tr><td>test</td><td>ubuntu / macos / windows</td><td>Unit tests + go vet + CLI build</td></tr>
-      <tr><td>coverage</td><td>ubuntu</td><td>Coverage report + badge + PR comment</td></tr>
-      <tr><td>benchmark</td><td>ubuntu</td><td>Takeuchi, Fibonacci, TCO, List benchmarks</td></tr>
-      <tr><td>build-wasm</td><td>ubuntu</td><td>WebAssembly build (CI)</td></tr>
-      <tr><td>build</td><td>ubuntu</td><td>WASM + coverage + dashboard (Pages)</td></tr>
-    </table>
-  </div>
+  <!-- ===== Minimal JS: sets donut chart conic-gradient and coverage stat color dynamically ===== -->
+  <script>
+    (function() {
+      // Overall coverage percentage.
+      // CI replaces the coverage placeholder with the real value in pages.yml.
+      // Uses conic-gradient (CSS) with minimal JS to set the dynamic value.
+      var raw = '__COVERAGE_PCT__';
+      var pct = parseFloat(raw);
+      var isValid = !isNaN(pct);
 
-  <div class="card">
-    <h2>Benchmarks</h2>
-    <p>Performance benchmarks run on every push:</p>
-    <table>
-      <tr><th>Benchmark</th><th>Description</th></tr>
-      <tr><td>BenchmarkTakeuchi</td><td>tak(18, 12, 6) - classic recursive benchmark</td></tr>
-      <tr><td>BenchmarkFibonacci</td><td>fib(20) - naive recursive</td></tr>
-      <tr><td>BenchmarkTailRecursion</td><td>100,000 iteration loop - TCO verification</td></tr>
-      <tr><td>BenchmarkListOperations</td><td>1,000 element list creation + reverse</td></tr>
-    </table>
-    <p><a href="https://github.com/suchi/sucheme-go/actions/workflows/ci.yml">View latest results in Actions artifacts</a></p>
-  </div>
+      // Clamp to 0-100 range for safe rendering
+      if (isValid) pct = Math.max(0, Math.min(100, pct));
+
+      if (isValid) {
+        // Determine color class based on coverage threshold
+        var colorClass = pct >= 80 ? 'color-green' : pct >= 60 ? 'color-yellow' : pct >= 40 ? 'color-orange' : 'color-red';
+
+        // Update stat card with dynamic color
+        var statCov = document.getElementById('stat-coverage');
+        if (statCov) {
+          statCov.textContent = pct.toFixed(1) + '%';
+          statCov.className = 'stat-value ' + colorClass;
+        }
+
+        // Update donut chart (CSS conic-gradient, set dynamically via JS)
+        var donut = document.getElementById('donut-chart');
+        var donutPct = document.getElementById('donut-pct');
+        if (donut) {
+          var color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : pct >= 40 ? 'var(--orange)' : 'var(--red)';
+          donut.style.background = 'conic-gradient(' + color + ' 0% ' + pct + '%, var(--bar-track) ' + pct + '% 100%)';
+        }
+        if (donutPct) donutPct.textContent = pct.toFixed(1) + '%';
+      } else {
+        // Coverage value was not injected by CI (local preview).
+        // Leave stat and donut displays as '--' (their HTML default).
+        // Do NOT fall back to a fake number — that would be misleading.
+        var statCov = document.getElementById('stat-coverage');
+        if (statCov) statCov.textContent = '--';
+        var donutPct = document.getElementById('donut-pct');
+        if (donutPct) donutPct.textContent = '--%';
+      }
+
+      // Timestamp: detect if CI did not replace the placeholder
+      var tsEl = document.getElementById('build-timestamp');
+      if (tsEl && tsEl.textContent.indexOf('__BUILD_TIMESTAMP__') !== -1) {
+        tsEl.textContent = 'Last build: (local preview)';
+      }
+    })();
+  </script>
 </body>
 </html>
