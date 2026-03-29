@@ -425,12 +425,16 @@ func TestLargeInput(t *testing.T) {
 }
 
 func TestLongString(t *testing.T) {
-	long := strings.Repeat("a", 10000)
+	size := 10000
+	if testing.Short() {
+		size = 500
+	}
+	long := strings.Repeat("a", size)
 	input := `"` + long + `"`
 	l := New(input)
 	tok := mustToken(t, l)
-	if tok.Type != TokenString || len(tok.Value) != 10000 {
-		t.Fatalf("expected string of length 10000, got length %d", len(tok.Value))
+	if tok.Type != TokenString || len(tok.Value) != size {
+		t.Fatalf("expected string of length %d, got length %d", size, len(tok.Value))
 	}
 }
 

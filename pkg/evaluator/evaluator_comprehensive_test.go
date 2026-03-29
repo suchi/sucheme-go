@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/suchi/sucheme-go/pkg/types"
@@ -447,35 +448,47 @@ func TestDefineValuesMismatch(t *testing.T) {
 // =========================================================================
 
 func TestTCOInLet(t *testing.T) {
-	r := evalHelper(t, `
+	count := 10000
+	if testing.Short() {
+		count = 1000
+	}
+	r := evalHelper(t, fmt.Sprintf(`
 		(define (loop n)
 			(let ((x n))
 				(if (= x 0) "done" (loop (- x 1)))))
-		(loop 10000)
-	`)
+		(loop %d)
+	`, count))
 	if r.StrVal != "done" {
 		t.Errorf("expected done, got %s", r.String())
 	}
 }
 
 func TestTCOInCond(t *testing.T) {
-	r := evalHelper(t, `
+	count := 10000
+	if testing.Short() {
+		count = 1000
+	}
+	r := evalHelper(t, fmt.Sprintf(`
 		(define (loop n)
 			(cond ((= n 0) "done")
 				  (else (loop (- n 1)))))
-		(loop 10000)
-	`)
+		(loop %d)
+	`, count))
 	if r.StrVal != "done" {
 		t.Errorf("expected done, got %s", r.String())
 	}
 }
 
 func TestTCOInBegin(t *testing.T) {
+	count := 10000
+	if testing.Short() {
+		count = 1000
+	}
 	e := setupEval()
 	evalWithEnv(t, `(define (loop n)
 		(begin
 			(if (= n 0) "done" (loop (- n 1)))))`, e)
-	r := evalWithEnv(t, "(loop 10000)", e)
+	r := evalWithEnv(t, fmt.Sprintf("(loop %d)", count), e)
 	if r.StrVal != "done" {
 		t.Errorf("expected done, got %s", r.String())
 	}
