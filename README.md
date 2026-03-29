@@ -104,11 +104,15 @@ go build -o sucheme.exe ./cmd/sucheme/
 ```bash
 # Linux / macOS
 GOOS=js GOARCH=wasm go build -o web-ui/sucheme.wasm ./cmd/wasm/
+```
 
+```powershell
 # Windows (PowerShell)
 $env:GOOS="js"; $env:GOARCH="wasm"; go build -o web-ui/sucheme.wasm ./cmd/wasm/
+```
 
-# Windows (cmd)
+```bat
+rem Windows (cmd)
 set GOOS=js&& set GOARCH=wasm&& go build -o web-ui/sucheme.wasm ./cmd/wasm/
 ```
 

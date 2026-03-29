@@ -684,7 +684,7 @@ if (Test-Path "$goRoot/misc/wasm/wasm_exec.js") {
 }
 
 cd web-ui
-python3 -m http.server 8080
+python -m http.server 8080
 ```
 
 </details>
