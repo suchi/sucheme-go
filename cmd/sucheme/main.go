@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/chzyer/readline"
 
 	"github.com/suchi/sucheme-go/pkg/builtin"
 	"github.com/suchi/sucheme-go/pkg/env"
@@ -25,6 +28,8 @@ func main() {
 		interactive bool
 		showVersion bool
 		quiet       bool
+		viMode      bool
+		noReadline  bool
 		loadFiles   stringSlice
 	)
 
@@ -32,6 +37,8 @@ func main() {
 	flag.BoolVar(&interactive, "i", false, "enter interactive REPL after loading files")
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
 	flag.BoolVar(&quiet, "q", false, "suppress REPL banner")
+	flag.BoolVar(&viMode, "vi", false, "use vi keybindings (default is Emacs)")
+	flag.BoolVar(&noReadline, "no-readline", false, "disable readline line editing")
 	flag.Var(&loadFiles, "l", "load a Scheme file before execution (can be repeated)")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: sucheme [options] [file ...]\n\n")
@@ -101,8 +108,13 @@ func main() {
 		}
 	}
 
+	// Check SUCHEME_KEYMAP environment variable
+	if km := os.Getenv("SUCHEME_KEYMAP"); km == "vi" {
+		viMode = true
+	}
+
 	// REPL
-	runREPL(e, quiet)
+	runREPL(e, quiet, viMode, noReadline)
 }
 
 func loadFile(path string, e *env.Env) error {
@@ -123,12 +135,49 @@ func loadFile(path string, e *env.Env) error {
 	return nil
 }
 
-func runREPL(e *env.Env, quiet bool) {
+// useReadline determines whether readline should be used.
+// It returns false when --no-readline is set or stdin/stdout are not terminals.
+func useReadline(noReadline bool) bool {
+	if noReadline {
+		return false
+	}
+	stdinInfo, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	stdoutInfo, err := os.Stdout.Stat()
+	if err != nil {
+		return false
+	}
+	// Enable readline only when both stdin and stdout are character devices (TTY).
+	return stdinInfo.Mode()&os.ModeCharDevice != 0 && stdoutInfo.Mode()&os.ModeCharDevice != 0
+}
+
+// historyFile returns the path to the history file (~/.sucheme_history).
+func historyFile() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".sucheme_history")
+}
+
+func runREPL(e *env.Env, quiet, viMode, noReadline bool) {
 	if !quiet {
 		fmt.Println("sucheme " + Version)
 		fmt.Println("Type (exit) or Ctrl+D to quit.")
 	}
 
+	if !useReadline(noReadline) {
+		runPlainREPL(e)
+		return
+	}
+
+	runReadlineREPL(e, viMode)
+}
+
+// runPlainREPL runs the REPL with basic bufio input (no line editing).
+func runPlainREPL(e *env.Env) {
 	reader := bufio.NewReader(os.Stdin)
 	var buf strings.Builder
 	prompt := "sucheme> "
@@ -136,9 +185,26 @@ func runREPL(e *env.Env, quiet bool) {
 	for {
 		fmt.Print(prompt)
 		line, err := reader.ReadString('\n')
+
+		// Even on EOF, ReadString may return a partial line; add it to the buffer.
+		if len(line) > 0 {
+			buf.WriteString(line)
+		}
+
 		if err != nil {
 			if err == io.EOF {
-				if buf.Len() > 0 {
+				// Try to evaluate any remaining buffered input
+				input := strings.TrimSpace(buf.String())
+				if input != "" && isComplete(input) {
+					if input != "(exit)" && input != "(quit)" {
+						result, evalErr := evaluator.EvalString(input, e)
+						if evalErr != nil {
+							fmt.Fprintf(os.Stderr, "Error: %v\n", evalErr)
+						} else if result != nil && result.Type != types.TypeVoid {
+							fmt.Println(result.String())
+						}
+					}
+				} else if input != "" {
 					fmt.Fprintln(os.Stderr, "\nError: unexpected end of input")
 				} else {
 					fmt.Println()
@@ -149,7 +215,6 @@ func runREPL(e *env.Env, quiet bool) {
 			return
 		}
 
-		buf.WriteString(line)
 		input := strings.TrimSpace(buf.String())
 
 		if input == "" {
@@ -157,13 +222,11 @@ func runREPL(e *env.Env, quiet bool) {
 			continue
 		}
 
-		// Check for balanced parentheses
 		if !isComplete(input) {
 			prompt = "... "
 			continue
 		}
 
-		// Special REPL commands
 		if input == "(exit)" || input == "(quit)" {
 			return
 		}
@@ -177,6 +240,85 @@ func runREPL(e *env.Env, quiet bool) {
 
 		buf.Reset()
 		prompt = "sucheme> "
+	}
+}
+
+// runReadlineREPL runs the REPL with readline-based line editing and history.
+func runReadlineREPL(e *env.Env, viMode bool) {
+	cfg := &readline.Config{
+		Prompt:            "sucheme> ",
+		HistoryFile:       historyFile(),
+		HistorySearchFold: true,
+		InterruptPrompt:   "^C",
+		EOFPrompt:         "",
+	}
+
+	if viMode {
+		cfg.VimMode = true
+	}
+
+	rl, err := readline.NewEx(cfg)
+	if err != nil {
+		// Fall back to plain REPL if readline fails to initialize
+		fmt.Fprintf(os.Stderr, "Warning: readline init failed (%v), falling back to plain input\n", err)
+		runPlainREPL(e)
+		return
+	}
+	defer rl.Close()
+
+	var buf strings.Builder
+
+	for {
+		line, err := rl.Readline()
+		if err != nil {
+			if err == readline.ErrInterrupt {
+				// Ctrl+C: discard current input
+				if buf.Len() > 0 {
+					buf.Reset()
+					rl.SetPrompt("sucheme> ")
+					continue
+				}
+				continue
+			}
+			if err == io.EOF {
+				if buf.Len() > 0 {
+					fmt.Fprintln(os.Stderr, "\nError: unexpected end of input")
+				} else {
+					fmt.Println()
+				}
+				return
+			}
+			fmt.Fprintf(os.Stderr, "\nError reading input: %v\n", err)
+			return
+		}
+
+		buf.WriteString(line)
+		buf.WriteString("\n")
+		input := strings.TrimSpace(buf.String())
+
+		if input == "" {
+			buf.Reset()
+			continue
+		}
+
+		if !isComplete(input) {
+			rl.SetPrompt("... ")
+			continue
+		}
+
+		if input == "(exit)" || input == "(quit)" {
+			return
+		}
+
+		result, err := evaluator.EvalString(input, e)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		} else if result != nil && result.Type != types.TypeVoid {
+			fmt.Println(result.String())
+		}
+
+		buf.Reset()
+		rl.SetPrompt("sucheme> ")
 	}
 }
 
