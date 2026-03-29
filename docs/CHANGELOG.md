@@ -23,7 +23,7 @@
   - [ADR-006](adr/006-tco-trampoline.md): TCOにトランポリン方式を採用
 - [**PR #4**](https://github.com/suchi/sucheme-go/pull/4): R7RS `syntax-rules` マクロシステム
 - [**PR #5**](https://github.com/suchi/sucheme-go/pull/5): 例外処理（`guard`/`raise`）、`case-lambda`、`map`/`filter`/`for-each`
-- [**PR #6**](https://github.com/suchi/sucheme-go/pull/6), [**#7**](https://github.com/suchi/sucheme-go/pull/7): ドキュメント整備（CI/CD、組み込み関数一覧、R7RS対応表、オンボーディング、サンプル104件）
+- [**PR #6**](https://github.com/suchi/sucheme-go/pull/6), [**PR #7**](https://github.com/suchi/sucheme-go/pull/7): ドキュメント整備（CI/CD、組み込み関数一覧、R7RS対応表、オンボーディング、サンプル104件）
   - PR #6 は一度 revert されて #7 で再投入
 - [**PR #8**](https://github.com/suchi/sucheme-go/pull/8): `parameterize`、ポートI/O、README更新（Phase 4a）
   - この時点で `docs/plans/phase4-plan.md` を作成（Phase 4 の依存関係と分割戦略）

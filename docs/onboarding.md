@@ -178,7 +178,7 @@ sucheme-go/
 │   ├── strings/           #   文字列処理
 │   └── *.scm              #   ルート直下のクラシック例（factorial, fibonacci, tak 等）
 ├── docs/                  # ドキュメント
-│   ├── adr/               #   Architecture Decision Records (11件)
+│   ├── adr/               #   Architecture Decision Records (10件)
 │   ├── plans/             #   計画ドキュメント
 │   │   ├── architecture-plan.md
 │   │   ├── phase4-plan.md
@@ -983,7 +983,7 @@ fi
 | [plans/architecture-plan.md](plans/architecture-plan.md) | 技術設計プラン（型システム、評価器設計、CPS 将来計画） |
 | [r7rs-compliance.md](r7rs-compliance.md) | R7RS 対応状況（機能ごとの詳細な対応表） |
 | [plans/phase4-plan.md](plans/phase4-plan.md) | Phase 4 実装戦略 |
-| [adr/](adr/) | Architecture Decision Records (11件) |
+| [adr/](adr/) | Architecture Decision Records (10件) |
 | [CHANGELOG.md](CHANGELOG.md) | 開発履歴（時系列、PRリンク付き） |
 | [SOW.md](../SOW.md) | Statement of Work |
 | [README.md](../README.md) | プロジェクト概要、クイックスタート、サンプルコード |

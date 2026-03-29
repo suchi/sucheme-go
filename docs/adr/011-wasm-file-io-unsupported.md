@@ -45,7 +45,7 @@ Sucheme は `GOOS=js GOARCH=wasm` でWASMにコンパイルし、ブラウザ上
 ## 影響
 
 - R7RS準拠表の `include`, `include-ci` に「WASM非対応」の備考を付記
-- `open-input-file`, `open-output-file` はR7RS準拠表で「未対応」（CLIでも未実装、[ロードマップ E-05](../enhancement-roadmap.md) で対応予定）
+- `open-input-file`, `open-output-file` はR7RS準拠表で「未対応」（CLIでも未実装、[ロードマップ「6. I/Oポートの完全対応」](../enhancement-roadmap.md) で対応予定）
 - Web UIのREPLではファイル関連機能が使えないことをユーザーに通知（`:help` コマンド等で案内）
 
 ## 将来の変更

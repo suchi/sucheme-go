@@ -28,14 +28,14 @@ ADR-007 で `call/cc` を escape continuation のみに限定したため、「�
 2. **実用上十分**: 非ローカル脱出時のリソースクリーンアップ（ファイルクローズ、ロック解放等）はescape時のafterで対応可能
 3. **正しい部分実装**: できないことを無理に実装するより、サポート範囲を明確にして正しく動作させる
 
-## 実装
+## 実装（擬似コード）
+
+実際の実装は `pkg/evaluator/continuation.go` を参照。以下は概要を示す擬似コード:
 
 ```go
-// pkg/evaluator/continuation.go
-
 type WindEntry struct {
-    Before func()
-    After  func()
+    Before *types.Value  // before thunk（手続き）
+    After  *types.Value  // after thunk（手続き）
 }
 
 // グローバルな windStack（LIFOスタック）で管理

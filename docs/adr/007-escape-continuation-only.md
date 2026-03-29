@@ -28,13 +28,13 @@ R7RS は `call-with-current-continuation`（`call/cc`）で取得した継続を
 2. **多くのユースケースをカバー**: 非ローカル脱出（`guard`の例外処理、ループ脱出、コルーチンのキャンセル等）はescape continuationで十分
 3. **安全性**: `unsafe` パッケージやcgoへの依存を避けられる
 4. **WASMとの互換性**: WASMビルドでも問題なく動作する
-5. **段階的な拡張パス**: 将来的にCPS変換への移行は可能（[ロードマップ E-03](../enhancement-roadmap.md)）
+5. **段階的な拡張パス**: 将来的にCPS変換への移行は可能（[ロードマップ「3. Full Continuations」](../enhancement-roadmap.md)）
 
-## 実装
+## 実装（擬似コード）
+
+実際の実装は `pkg/evaluator/continuation.go` を参照。以下は概要を示す擬似コード:
 
 ```go
-// pkg/evaluator/continuation.go
-
 type ContinuationEscape struct {
     Value *types.Value
     Tag   int64  // 一意なタグで正しいcall/ccにマッチ

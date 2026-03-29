@@ -60,5 +60,5 @@ func Eval(expr *types.Value, e *env.Env) (*types.Value, error) {
 ## 影響
 
 - `if`, `cond`, `case`, `begin`, `let`, `letrec`, `do`, `when`, `unless`, `guard`, `case-lambda` の末尾位置でTCOが有効
-- `or`/`and` の最終式でのTCO適用は今後の拡張対象（[ロードマップ E-14](../enhancement-roadmap.md)）
+- `or`/`and` の最終式でのTCO適用は今後の拡張対象（[ロードマップ「8. TCO完全対応」](../enhancement-roadmap.md)）
 - バイトコードVMへの将来的な移行時は、TCOの実装方式も変更される

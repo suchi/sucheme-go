@@ -165,7 +165,7 @@ sucheme-go/
 ├── web-ui/            # Web REPL UI（HTML/CSS/JS）
 ├── examples/          # 104個のサンプルプログラム（10カテゴリ）
 ├── docs/              # ドキュメント
-│   ├── adr/           # Architecture Decision Records (11件)
+│   ├── adr/           # Architecture Decision Records (10件)
 │   ├── plans/         # 計画ドキュメント
 │   ├── r7rs-compliance.md  # R7RS対応状況（詳細版）
 │   ├── CHANGELOG.md        # 開発履歴（時系列）
@@ -262,7 +262,7 @@ sucheme-go/
 - [R7RS 対応状況](docs/r7rs-compliance.md) — 機能ごとの対応状況
 - [オンボーディング](docs/onboarding.md) — 開発者向けガイド
 - [アーキテクチャ設計](docs/plans/architecture-plan.md) — 技術設計プラン
-- [ADR](docs/adr/) — Architecture Decision Records (11件)
+- [ADR](docs/adr/) — Architecture Decision Records (10件)
 - [エンハンスロードマップ](docs/enhancement-roadmap.md) — 将来の機能候補30件
 - [SOW](SOW.md) — 作業範囲記述書
 - [サンプル](examples/) — 104個の Scheme プログラム

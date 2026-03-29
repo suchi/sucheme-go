@@ -41,7 +41,7 @@ R7RS の `include-ci` は、指定されたファイルを読み込み、**識�
 
 - `include-ci` で読み込んだファイル内の文字列リテラルが意図せず小文字化される
 - R7RS準拠表では「部分対応」として記録（[r7rs-compliance.md](../r7rs-compliance.md)）
-- [ロードマップ E-04](../enhancement-roadmap.md) で正確な実装への置き換えを計画
+- [ロードマップ「7. include-ci の正確な実装」](../enhancement-roadmap.md) で正確な実装への置き換えを計画
 
 ## 将来の変更
 
