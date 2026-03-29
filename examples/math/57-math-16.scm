@@ -19,15 +19,15 @@
 
 ; Root of x^2 - 2 = 0  =>  sqrt(2)
 (display "sqrt(2) by bisection:") (newline)
-(display (bisect (lambda (x) (- (* x x) 2)) 1 2 1/10000 100))
+(display (bisect (lambda (x) (- (* x x) 2)) 1 2 (/ 1 10000) 100))
 (newline)
 
 ; Root of x^3 - x - 1 = 0 (plastic number, approx 1.3247)
 (display "Root of x^3 - x - 1:") (newline)
-(display (bisect (lambda (x) (- (- (* x x x) x) 1)) 1 2 1/10000 100))
+(display (bisect (lambda (x) (- (- (* x x x) x) 1)) 1 2 (/ 1 10000) 100))
 (newline)
 
 ; Root of x^2 - 3x + 2 = 0 => x=1 or x=2, find x near 1
 (display "Root of x^2 - 3x + 2 near 0.5:") (newline)
-(display (bisect (lambda (x) (+ (- (* x x) (* 3 x)) 2)) 0 3/2 1/10000 100))
+(display (bisect (lambda (x) (+ (- (* x x) (* 3 x)) 2)) 0 (/ 3 2) (/ 1 10000) 100))
 (newline)
