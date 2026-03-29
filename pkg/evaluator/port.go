@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/suchi/sucheme-go/pkg/builtin"
 	"github.com/suchi/sucheme-go/pkg/env"
 	"github.com/suchi/sucheme-go/pkg/parser"
 	"github.com/suchi/sucheme-go/pkg/types"
@@ -43,8 +44,27 @@ func NewOutputStringPort() *Port {
 	}
 }
 
-// RegisterPortBuiltins registers port-related procedures.
+// RegisterPortBuiltins registers port-related procedures and initializes
+// the default input/output ports so that current-input-port and
+// current-output-port return usable port values.
 func RegisterPortBuiltins(e *env.Env) {
+	// Initialize default ports so current-input-port / current-output-port
+	// return values with non-nil PortVal. Without this, port? and other
+	// predicates would fail on the defaults.
+	stdinPort := &Port{
+		Name:    "stdin",
+		IsInput: true,
+		Reader:  bufio.NewReader(strings.NewReader("")),
+	}
+	builtin.SetDefaultInputPort(makePortValue(stdinPort))
+
+	stdoutPort := &Port{
+		Name:     "stdout",
+		IsOutput: true,
+		Writer:   &strings.Builder{},
+	}
+	builtin.SetDefaultOutputPort(makePortValue(stdoutPort))
+
 	e.Define("open-input-string", types.NewProcedure("open-input-string", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 1 || args[0].Type != types.TypeString {
 			return nil, fmt.Errorf("expected a string")
