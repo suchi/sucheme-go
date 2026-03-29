@@ -934,8 +934,15 @@
           donut.style.background = 'conic-gradient(' + color + ' 0% ' + pct + '%, var(--bar-track) ' + pct + '% 100%)';
         }
         if (donutPct) donutPct.textContent = pct.toFixed(1) + '%';
+      } else {
+        // Coverage value was not injected by CI (local preview).
+        // Leave stat and donut displays as '--' (their HTML default).
+        // Do NOT fall back to a fake number — that would be misleading.
+        var statCov = document.getElementById('stat-coverage');
+        if (statCov) statCov.textContent = '--';
+        var donutPct = document.getElementById('donut-pct');
+        if (donutPct) donutPct.textContent = '--%';
       }
-      // If coverage value was not injected by CI, leave display as '--' (default)
 
       // Timestamp: detect if CI did not replace the placeholder
       var tsEl = document.getElementById('build-timestamp');
