@@ -1,5 +1,5 @@
 ; 100: Sudoku Solver (4x4)
-; Solve a 4x4 Sudoku puzzle using constraint propagation and backtracking.
+; Solve a 4x4 Sudoku puzzle using backtracking search with validity checks.
 ; 0 represents an empty cell. Values are 1-4.
 
 (define (list-set lst idx val)

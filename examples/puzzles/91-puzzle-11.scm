@@ -4,12 +4,13 @@
 
 (define (queens n)
   (define (safe? col row placed)
-    (let loop ((c 0) (rest placed))
+    ; placed is in reverse column order: (col-1, col-2, ..., col-0)
+    (let loop ((c 1) (rest placed))
       (if (null? rest)
           #t
           (let ((r (car rest)))
             (if (or (= r row)
-                    (= (abs (- col c)) (abs (- row r))))
+                    (= c (abs (- row r))))
                 #f
                 (loop (+ c 1) (cdr rest)))))))
   (define (abs x) (if (< x 0) (- x) x))

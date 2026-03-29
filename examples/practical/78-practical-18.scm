@@ -45,41 +45,41 @@
   (cdr (assoc key bindings)))
 
 ; Example: classify shapes
-; Patterns use literal symbols (circle, rect, point) and (? var) for captures
+; Patterns are quoted data: literal symbols match exactly, (? name) captures
 (define (describe-shape shape)
   (pmatch shape
-    ((list 'circle (? r))
+    ('(circle (? r))
      (lambda (b)
        (display "  Circle with radius ") (display (lookup 'r b)) (newline)))
-    ((list 'rect (? w) (? h))
+    ('(rect (? w) (? h))
      (lambda (b)
        (display "  Rectangle ") (display (lookup 'w b))
        (display " x ") (display (lookup 'h b)) (newline)))
-    ((list 'point (? x) (? y))
+    ('(point (? x) (? y))
      (lambda (b)
        (display "  Point at (") (display (lookup 'x b))
        (display ", ") (display (lookup 'y b)) (display ")") (newline)))))
 
 (display "Shape pattern matching:") (newline)
-(describe-shape (list 'circle 5))
-(describe-shape (list 'rect 3 4))
-(describe-shape (list 'point 10 20))
+(describe-shape '(circle 5))
+(describe-shape '(rect 3 4))
+(describe-shape '(point 10 20))
 
 ; Example: simple expression evaluator via matching
 (display "Expression matching:") (newline)
-(let ((exprs (list (list 'add 3 4) (list 'mul 5 6) (list 'neg 7))))
+(let ((exprs (list '(add 3 4) '(mul 5 6) '(neg 7))))
   (for-each
    (lambda (expr)
      (pmatch expr
-       ((list 'add (? a) (? b))
+       ('(add (? a) (? b))
         (lambda (env)
           (display "  ") (display expr) (display " => ")
           (display (+ (lookup 'a env) (lookup 'b env))) (newline)))
-       ((list 'mul (? a) (? b))
+       ('(mul (? a) (? b))
         (lambda (env)
           (display "  ") (display expr) (display " => ")
           (display (* (lookup 'a env) (lookup 'b env))) (newline)))
-       ((list 'neg (? a))
+       ('(neg (? a))
         (lambda (env)
           (display "  ") (display expr) (display " => ")
           (display (- (lookup 'a env))) (newline)))))

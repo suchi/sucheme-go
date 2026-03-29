@@ -1,7 +1,7 @@
 ; 98: Balanced Parentheses Checker and Generator
-; Check if a string of parens is balanced, and generate all balanced strings of length 2n.
+; Check if a sequence of 'open/'close symbols is balanced, and generate all balanced sequences of length 2n.
 
-; Check balance using a counter (stack simulation)
+; Check balance over a list of 'open/'close symbols using a counter (stack simulation)
 (define (balanced? chars)
   (let loop ((cs chars) (depth 0))
     (cond ((< depth 0) #f)
