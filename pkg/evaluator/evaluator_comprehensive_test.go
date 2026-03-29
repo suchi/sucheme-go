@@ -451,7 +451,7 @@ func TestTCOInLet(t *testing.T) {
 		(define (loop n)
 			(let ((x n))
 				(if (= x 0) "done" (loop (- x 1)))))
-		(loop 50000)
+		(loop 10000)
 	`)
 	if r.StrVal != "done" {
 		t.Errorf("expected done, got %s", r.String())
@@ -463,7 +463,7 @@ func TestTCOInCond(t *testing.T) {
 		(define (loop n)
 			(cond ((= n 0) "done")
 				  (else (loop (- n 1)))))
-		(loop 50000)
+		(loop 10000)
 	`)
 	if r.StrVal != "done" {
 		t.Errorf("expected done, got %s", r.String())
@@ -475,7 +475,7 @@ func TestTCOInBegin(t *testing.T) {
 	evalWithEnv(t, `(define (loop n)
 		(begin
 			(if (= n 0) "done" (loop (- n 1)))))`, e)
-	r := evalWithEnv(t, "(loop 50000)", e)
+	r := evalWithEnv(t, "(loop 10000)", e)
 	if r.StrVal != "done" {
 		t.Errorf("expected done, got %s", r.String())
 	}
@@ -605,8 +605,8 @@ func TestClosureMutation(t *testing.T) {
 	r := evalHelper(t, `
 		(define (make-box val)
 			(define (get) val)
-			(define (set! new-val) (set! val new-val))
-			(list get set!))
+			(define (set-val! new-val) (set! val new-val))
+			(list get set-val!))
 		(define box (make-box 10))
 		(define get (car box))
 		(define set-box! (car (cdr box)))

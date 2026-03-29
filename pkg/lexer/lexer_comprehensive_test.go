@@ -410,13 +410,17 @@ func TestConsecutiveStrings(t *testing.T) {
 // =========================================================================
 
 func TestLargeInput(t *testing.T) {
-	input := strings.Repeat("(", 5000) + strings.Repeat(")", 5000)
+	size := 5000
+	if testing.Short() {
+		size = 100
+	}
+	input := strings.Repeat("(", size) + strings.Repeat(")", size)
 	tokens, err := AllTokens(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(tokens) != 10000 {
-		t.Fatalf("expected 10000 tokens, got %d", len(tokens))
+	if len(tokens) != size*2 {
+		t.Fatalf("expected %d tokens, got %d", size*2, len(tokens))
 	}
 }
 

@@ -150,8 +150,8 @@ func TestStringSetTypeErrors(t *testing.T) {
 func TestMakeString(t *testing.T) {
 	e := setup()
 	r := call(t, e, "make-string", types.NewInteger(5))
-	if len(r.StrVal) != 5 {
-		t.Errorf("expected string of length 5, got %d", len(r.StrVal))
+	if len([]rune(r.StrVal)) != 5 {
+		t.Errorf("expected string of length 5, got %d", len([]rune(r.StrVal)))
 	}
 }
 

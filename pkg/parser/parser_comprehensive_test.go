@@ -89,11 +89,17 @@ func TestDottedPairNested(t *testing.T) {
 
 func TestQuoteNested(t *testing.T) {
 	v := mustParse(t, "''x")
-	list, _ := v.ToList()
+	list, err := v.ToList()
+	if err != nil {
+		t.Fatalf("outer ToList failed: %v", err)
+	}
 	if list[0].SymbolVal != "quote" {
 		t.Fatal("expected outer quote")
 	}
-	inner, _ := list[1].ToList()
+	inner, err := list[1].ToList()
+	if err != nil {
+		t.Fatalf("inner ToList failed: %v", err)
+	}
 	if inner[0].SymbolVal != "quote" {
 		t.Fatal("expected inner quote")
 	}
