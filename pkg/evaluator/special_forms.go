@@ -398,10 +398,16 @@ func evalDefineValues(expr *types.Value, e *env.Env) (*evalResult, error) {
 
 // evalInclude implements R7RS include and include-ci.
 // For include-ci, identifiers in the source are folded to lowercase.
-// R7RS specifies that include-ci applies case-folding to identifiers only,
-// but as a practical approximation we fold the entire source since our lexer
-// does not yet support a per-read case-fold mode. String/character literals
-// that rely on case are rare in practice.
+//
+// NOTE: R7RS requires case-folding only for identifiers. This implementation
+// folds the entire source including string/character literals, which is
+// non-conformant. This is a known limitation.
+//
+// SECURITY: include reads files from the filesystem using os.ReadFile on
+// arbitrary paths. In untrusted evaluation contexts, this could allow reading
+// arbitrary host files. Consider restricting allowed paths in
+// security-sensitive deployments. In WASM builds, filesystem access is
+// restricted by the runtime sandbox.
 func evalInclude(expr *types.Value, e *env.Env, caseInsensitive bool) (*evalResult, error) {
 	args, err := listArgs(expr)
 	if err != nil || len(args) == 0 {

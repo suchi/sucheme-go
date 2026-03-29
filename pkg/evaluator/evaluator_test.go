@@ -752,3 +752,61 @@ func TestStringSet(t *testing.T) {
 		t.Errorf("expected Hello, got %s", r.StrVal)
 	}
 }
+
+// =========================================================================
+// Port and I/O tests
+// =========================================================================
+
+func TestCurrentInputPortReturnsPort(t *testing.T) {
+	e := setupEval()
+	r := evalWithEnv(t, "(current-input-port)", e)
+	if r.Type != types.TypePort {
+		t.Errorf("expected port type, got %s", r.Type)
+	}
+}
+
+func TestCurrentOutputPortReturnsPort(t *testing.T) {
+	e := setupEval()
+	r := evalWithEnv(t, "(current-output-port)", e)
+	if r.Type != types.TypePort {
+		t.Errorf("expected port type, got %s", r.Type)
+	}
+}
+
+func TestCurrentInputPortArityError(t *testing.T) {
+	err := evalErr(t, "(current-input-port 1)")
+	if err == nil {
+		t.Errorf("expected error for (current-input-port 1)")
+	}
+}
+
+func TestCurrentOutputPortArityError(t *testing.T) {
+	err := evalErr(t, "(current-output-port 1)")
+	if err == nil {
+		t.Errorf("expected error for (current-output-port 1)")
+	}
+}
+
+func TestReadFromStringPort(t *testing.T) {
+	e := setupEval()
+	r := evalWithEnv(t, `(read (open-input-string "42"))`, e)
+	if r.Type != types.TypeInteger || r.IntVal != 42 {
+		t.Errorf("expected 42, got %v", r)
+	}
+}
+
+func TestReadFromStringPortSymbol(t *testing.T) {
+	e := setupEval()
+	r := evalWithEnv(t, `(read (open-input-string "hello"))`, e)
+	if r.Type != types.TypeSymbol || r.SymbolVal != "hello" {
+		t.Errorf("expected symbol hello, got %v", r)
+	}
+}
+
+func TestReadFromStringPortEOF(t *testing.T) {
+	e := setupEval()
+	r := evalWithEnv(t, `(read (open-input-string ""))`, e)
+	if r.Type != types.TypeEof {
+		t.Errorf("expected eof, got %s", r.Type)
+	}
+}

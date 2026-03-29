@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/suchi/sucheme-go/pkg/env"
+	"github.com/suchi/sucheme-go/pkg/parser"
 	"github.com/suchi/sucheme-go/pkg/types"
 )
 
@@ -286,6 +287,46 @@ func RegisterPortBuiltins(e *env.Env) {
 			return nil, fmt.Errorf("expected 1 argument")
 		}
 		return types.NewBoolean(args[0].Type == types.TypeEof), nil
+	}))
+
+	// read: R7RS (read) or (read port) - reads one S-expression from input port.
+	// This overrides the builtin stub with a proper implementation using the parser.
+	e.Define("read", types.NewProcedure("read", func(args []*types.Value) (*types.Value, error) {
+		if len(args) > 1 {
+			return nil, fmt.Errorf("read: expected 0 or 1 argument, got %d", len(args))
+		}
+		var port *Port
+		if len(args) == 0 {
+			return nil, fmt.Errorf("read: current-input-port is not available")
+		}
+		var err error
+		port, err = getInputPort(args)
+		if err != nil {
+			return nil, fmt.Errorf("read: %w", err)
+		}
+		// Read available bytes from the port's reader
+		var buf []byte
+		for {
+			b, readErr := port.Reader.ReadByte()
+			if readErr == io.EOF {
+				break
+			}
+			if readErr != nil {
+				return nil, fmt.Errorf("read: %w", readErr)
+			}
+			buf = append(buf, b)
+		}
+		if len(buf) == 0 {
+			return types.Eof(), nil
+		}
+		exprs, parseErr := parser.ParseAllString(string(buf))
+		if parseErr != nil {
+			return nil, fmt.Errorf("read: %w", parseErr)
+		}
+		if len(exprs) == 0 {
+			return types.Eof(), nil
+		}
+		return exprs[0], nil
 	}))
 }
 

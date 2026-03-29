@@ -1580,10 +1580,18 @@ func registerBytevector(e *env.Env) {
 
 // DefaultInputPort is the default current-input-port.
 // The evaluator should replace this with a real port via SetDefaultInputPort.
+// NOTE: PortVal is initially nil. The evaluator MUST call SetDefaultInputPort
+// during initialization to provide a usable port. Calling current-input-port
+// before initialization will return a port with nil PortVal, which will cause
+// errors in procedures that attempt to read from it.
 var DefaultInputPort = &types.Value{Type: types.TypePort}
 
 // DefaultOutputPort is the default current-output-port.
 // The evaluator should replace this with a real port via SetDefaultOutputPort.
+// NOTE: PortVal is initially nil. The evaluator MUST call SetDefaultOutputPort
+// during initialization to provide a usable port. Calling current-output-port
+// before initialization will return a port with nil PortVal, which will cause
+// errors in procedures that attempt to write to it.
 var DefaultOutputPort = &types.Value{Type: types.TypePort}
 
 // SetDefaultInputPort replaces the default current-input-port.
@@ -1639,20 +1647,22 @@ func registerIO(e *env.Env) {
 	}))
 
 	// read: reads an S-expression from a port.
-	// The builtin package cannot directly read from evaluator ports.
-	// The evaluator overrides this with a proper implementation in port.go.
-	// This stub handles the no-arg case with an error.
+	// This is a stub implementation. The builtin package cannot directly parse
+	// S-expressions because it does not depend on the parser package.
+	// The evaluator SHOULD override this with a proper implementation (see port.go)
+	// that supports reading from string input ports and other port types.
 	e.Define("read", types.NewProcedure("read", func(args []*types.Value) (*types.Value, error) {
 		if len(args) > 1 {
-			return nil, fmt.Errorf("expected 0 or 1 argument, got %d", len(args))
+			return nil, fmt.Errorf("read: expected 0 or 1 argument, got %d", len(args))
 		}
 		if len(args) == 0 {
 			if DefaultInputPort.PortVal == nil {
-				return nil, fmt.Errorf("read: current-input-port is not available")
+				return nil, fmt.Errorf("read: current-input-port is not available (evaluator has not initialized default ports)")
 			}
 		}
-		// Port reading requires the evaluator's port abstraction.
-		// The evaluator should override this procedure.
-		return nil, fmt.Errorf("read: not supported in this context; use evaluator-provided read")
+		// Port reading requires the evaluator's parser and port abstraction.
+		// The evaluator should override this procedure with one that can parse
+		// S-expressions from string input ports (open-input-string) and other sources.
+		return nil, fmt.Errorf("read: builtin stub cannot read S-expressions; the evaluator must override this procedure")
 	}))
 }
