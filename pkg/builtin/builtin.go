@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/suchi/sucheme-go/pkg/env"
-	"github.com/suchi/sucheme-go/pkg/parser"
 	"github.com/suchi/sucheme-go/pkg/types"
 )
 
@@ -1223,9 +1222,10 @@ func registerString(e *env.Env) {
 	}))
 
 	// string-set! mutates a string at a given index.
-	// NOTE: Go strings are immutable, so this creates a new string and stores it
-	// back into the same Value. Other references to the original string Value
-	// will NOT see the mutation. This is a known limitation.
+	// NOTE: Go strings are immutable, so this creates a new Go string and assigns
+	// it to the StrVal field of the provided *types.Value. Since environments keep
+	// *types.Value pointers, any other references to the same Value will observe
+	// this mutation. If you need an independent string value, use string-copy first.
 	e.Define("string-set!", types.NewProcedure("string-set!", func(args []*types.Value) (*types.Value, error) {
 		if len(args) != 3 {
 			return nil, fmt.Errorf("expected 3 arguments (string, index, char), got %d", len(args))
@@ -1240,10 +1240,11 @@ func registerString(e *env.Env) {
 			return nil, fmt.Errorf("expected a character as 3rd argument, got %s", args[2].Type)
 		}
 		runes := []rune(args[0].StrVal)
-		idx := args[1].IntVal
-		if idx < 0 || idx >= int64(len(runes)) {
-			return nil, fmt.Errorf("string index out of range: %d (length %d)", idx, len(runes))
+		idx64 := args[1].IntVal
+		if idx64 < 0 || idx64 >= int64(len(runes)) {
+			return nil, fmt.Errorf("string index out of range: %d (length %d)", idx64, len(runes))
 		}
+		idx := int(idx64)
 		runes[idx] = args[2].CharVal
 		args[0].StrVal = string(runes)
 		return types.Void(), nil
@@ -1577,13 +1578,23 @@ func registerBytevector(e *env.Env) {
 	}))
 }
 
-// DefaultInputPort is the default current-input-port (stdin placeholder).
-// In the builtin package, this is a sentinel string port. The evaluator
-// may replace this with a real stdin port.
+// DefaultInputPort is the default current-input-port.
+// The evaluator should replace this with a real port via SetDefaultInputPort.
 var DefaultInputPort = &types.Value{Type: types.TypePort}
 
-// DefaultOutputPort is the default current-output-port (stdout placeholder).
+// DefaultOutputPort is the default current-output-port.
+// The evaluator should replace this with a real port via SetDefaultOutputPort.
 var DefaultOutputPort = &types.Value{Type: types.TypePort}
+
+// SetDefaultInputPort replaces the default current-input-port.
+func SetDefaultInputPort(port *types.Value) {
+	DefaultInputPort = port
+}
+
+// SetDefaultOutputPort replaces the default current-output-port.
+func SetDefaultOutputPort(port *types.Value) {
+	DefaultOutputPort = port
+}
 
 func registerIO(e *env.Env) {
 	e.Define("display", types.NewProcedure("display", func(args []*types.Value) (*types.Value, error) {
@@ -1627,65 +1638,21 @@ func registerIO(e *env.Env) {
 		return DefaultOutputPort, nil
 	}))
 
-	// read: reads an S-expression from a port (or string port).
-	// With no args, returns eof (stdin not supported in builtin package).
-	// With a port arg, reads from the port's reader via the parser.
+	// read: reads an S-expression from a port.
+	// The builtin package cannot directly read from evaluator ports.
+	// The evaluator overrides this with a proper implementation in port.go.
+	// This stub handles the no-arg case with an error.
 	e.Define("read", types.NewProcedure("read", func(args []*types.Value) (*types.Value, error) {
 		if len(args) > 1 {
 			return nil, fmt.Errorf("expected 0 or 1 argument, got %d", len(args))
 		}
 		if len(args) == 0 {
-			// No port given; cannot read from stdin in pure builtin context
-			return types.Eof(), nil
-		}
-		if args[0].Type != types.TypePort {
-			return nil, fmt.Errorf("expected a port, got %s", args[0].Type)
-		}
-		portVal := args[0].PortVal
-		if portVal == nil {
-			return nil, fmt.Errorf("invalid port")
-		}
-		// Use the ReadablePort interface to extract remaining content from the port.
-		rp, ok := portVal.(ReadablePort)
-		if !ok {
-			return nil, fmt.Errorf("port does not support reading")
-		}
-		if rp.IsClosed() {
-			return nil, fmt.Errorf("port is closed")
-		}
-		// Read all remaining bytes from the port's reader
-		var sb strings.Builder
-		for {
-			b, err := rp.GetReader().ReadByte()
-			if err != nil {
-				break
+			if DefaultInputPort.PortVal == nil {
+				return nil, fmt.Errorf("read: current-input-port is not available")
 			}
-			sb.WriteByte(b)
 		}
-		content := sb.String()
-		if content == "" {
-			return types.Eof(), nil
-		}
-		p := parser.New(content)
-		val, err := p.Parse()
-		if err != nil {
-			return nil, fmt.Errorf("read: parse error: %v", err)
-		}
-		if val == nil {
-			return types.Eof(), nil
-		}
-		return val, nil
+		// Port reading requires the evaluator's port abstraction.
+		// The evaluator should override this procedure.
+		return nil, fmt.Errorf("read: not supported in this context; use evaluator-provided read")
 	}))
-}
-
-// ReadablePort is an interface for ports that support reading.
-// The evaluator's Port type should satisfy this interface.
-type ReadablePort interface {
-	GetReader() ByteReader
-	IsClosed() bool
-}
-
-// ByteReader reads one byte at a time.
-type ByteReader interface {
-	ReadByte() (byte, error)
 }

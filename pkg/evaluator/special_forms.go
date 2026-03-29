@@ -128,13 +128,24 @@ func evalDefineRecordType(expr *types.Value, e *env.Env) (*evalResult, error) {
 	}
 
 	// 5. Define constructor
+	// Collect all field names so non-ctor fields get initialized to undefined.
+	allFieldNames := make([]string, len(fieldSpecs))
+	for i, fs := range fieldSpecs {
+		allFieldNames[i] = fs.name
+	}
 	capturedCtorFields := ctorFields
 	capturedRTD := rtd
+	capturedAllFields := allFieldNames
 	e.Define(ctorName, types.NewProcedure(ctorName, func(args []*types.Value) (*types.Value, error) {
 		if len(args) != len(capturedCtorFields) {
 			return nil, fmt.Errorf("expected %d arguments, got %d", len(capturedCtorFields), len(args))
 		}
 		fields := make(map[string]*types.Value)
+		// Initialize all fields to undefined
+		for _, name := range capturedAllFields {
+			fields[name] = types.Undefined()
+		}
+		// Overwrite with constructor arguments
 		for i, name := range capturedCtorFields {
 			fields[name] = args[i]
 		}
